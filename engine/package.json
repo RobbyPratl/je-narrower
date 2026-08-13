@@ -8,6 +8,7 @@
     "seed:demo": "tsx src/cli.ts seed-demo",
     "showcase:manifest": "node scripts/generate-showcase-manifest.mjs",
     "serve": "tsx src/cli.ts serve",
+    "serve:replit": "tsx src/cli.ts serve-replit",
     "test": "vitest run",
     "test:watch": "vitest"
   },

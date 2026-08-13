@@ -25,14 +25,19 @@ async function main() {
     return;
   }
 
-  if (cmd === 'serve') {
+  if (cmd === 'serve' || cmd === 'serve-replit') {
+    if (cmd === 'serve-replit') await migrate(pool);
     const app = await createServer(pool, repoRoot);
     const port = Number(process.env.PORT ?? 4000);
     await app.listen({ port, host: '0.0.0.0' });
+    if (cmd === 'serve-replit') {
+      console.log('server ready; preparing demo population in the background');
+      void seedDemo().catch((err) => console.error('background demo seed failed', err));
+    }
     return;
   }
 
-  console.error('usage: cli.ts migrate | seed-demo | serve');
+  console.error('usage: cli.ts migrate | seed-demo | serve | serve-replit');
   process.exit(1);
 }
 
@@ -79,5 +84,5 @@ main()
     process.exit(1);
   })
   .finally(() => {
-    if (cmd !== 'serve') void pool.end();
+    if (cmd !== 'serve' && cmd !== 'serve-replit') void pool.end();
   });
