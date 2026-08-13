@@ -17,7 +17,7 @@ export function Export({
   status: Loaded;
   onClose: () => void;
 }) {
-  const concluded = items.filter((i) => itemState(i) === 'concluded');
+  const reviewed = items.filter((i) => itemState(i) === 'reviewed');
   const aside = items.filter((i) => itemState(i) === 'aside');
   const open = items.filter((i) => itemState(i) === 'open');
   const superseded = items.flatMap((i) => i.supersededDecisions.map((d) => ({ item: i, prior: d })));
@@ -35,8 +35,8 @@ export function Export({
 
         <div className="mb">
           <p className="exportnote">
-            Two sheets: every flagged item with the rules that fired and its conclusion, then the
-            conclusions that were superseded.
+            Two sheets: every selected review item with its selection criteria and recorded
+            conclusion, followed by the conclusions that were superseded.
           </p>
           <table className="xtab">
             <thead>
@@ -48,7 +48,7 @@ export function Export({
               </tr>
             </thead>
             <tbody>
-              {[...concluded, ...aside, ...open].map((item) => (
+              {[...reviewed, ...aside, ...open].map((item) => (
                 <tr key={item.groupId}>
                   <td className="m">{pairLabel(item)}</td>
                   <td className="m">{item.entryCount}</td>
@@ -64,7 +64,7 @@ export function Export({
 
         <footer>
           <span className="exportcount">
-            <b className="mono">{concluded.length}</b> concluded,{' '}
+            <b className="mono">{reviewed.length}</b> reviewed,{' '}
             <b className="mono">{open.length}</b> open, <b className="mono">{aside.length}</b> set
             aside, <b className="mono">{superseded.length}</b> superseded
           </span>

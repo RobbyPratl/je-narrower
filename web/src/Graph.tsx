@@ -6,6 +6,17 @@ const WIDTH = 1200;
 const HEIGHT = 250;
 const MODES: GraphMode[] = ['diff', 'p1', 'p2'];
 const STATUSES = ['NEW', 'SHIFTED', 'VANISHED', 'STABLE'] as const;
+const modeLabels: Record<GraphMode, string> = {
+  diff: 'Comparison',
+  p1: 'Prior period',
+  p2: 'Current period',
+};
+const statusLabels: Record<(typeof STATUSES)[number], string> = {
+  NEW: 'New',
+  SHIFTED: 'Changed',
+  VANISHED: 'No longer present',
+  STABLE: 'Stable',
+};
 
 interface Point {
   x: number;
@@ -55,11 +66,11 @@ export function Graph({ onPickPair }: { onPickPair: (pair: [string, string]) => 
   return (
     <div className="graph" data-open="1">
       <div className="gb">
-        <span className="lab">Account pairs</span>
+        <span className="lab">Account flows</span>
         <span className="seg">
           {MODES.map((m) => (
             <button key={m} aria-pressed={mode === m} onClick={() => setMode(m)}>
-              {m}
+              {modeLabels[m]}
             </button>
           ))}
         </span>
@@ -129,14 +140,14 @@ export function Graph({ onPickPair }: { onPickPair: (pair: [string, string]) => 
 
         <div className="gside">
           <div className="lab" style={{ marginBottom: 'var(--sp3)' }}>
-            {mode === 'diff' ? 'Status' : 'Pairs'}
+            {mode === 'diff' ? 'Change from prior period' : 'Account combinations'}
           </div>
           {mode === 'diff' ? (
             <div className="key">
               {STATUSES.map((status) => (
                 <div key={status}>
                   <Stroke status={status} />
-                  {status}
+                  {statusLabels[status]}
                   <span style={{ marginLeft: 'auto' }} className="mono">
                     {edges.filter((e) => e.status === status).length}
                   </span>
@@ -146,13 +157,13 @@ export function Graph({ onPickPair }: { onPickPair: (pair: [string, string]) => 
           ) : (
             <div className="key">
               <div>
-                pairs
+                Account combinations
                 <span style={{ marginLeft: 'auto' }} className="mono">
                   {edges.length}
                 </span>
               </div>
               <div>
-                accounts
+                Accounts
                 <span style={{ marginLeft: 'auto' }} className="mono">
                   {nodes.length}
                 </span>

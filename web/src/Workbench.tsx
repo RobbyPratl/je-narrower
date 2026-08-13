@@ -37,16 +37,23 @@ type Ask =
 export function Workbench({
   item,
   items,
-  onConcluded,
+  onSelectItem,
+  onReviewRecorded,
 }: {
   item: QueueItem | null;
   items: QueueItem[];
-  onConcluded: () => void;
+  onSelectItem: (groupId: string) => void;
+  onReviewRecorded: () => void;
 }) {
   const queryClient = useQueryClient();
   const groupId = item?.groupId ?? null;
+  const workbench = useRef<HTMLDivElement>(null);
   const [ask, setAsk] = useState<Ask | null>(null);
   const basisField = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    workbench.current?.scrollTo({ top: 0 });
+  }, [groupId]);
 
   const { data: sheet } = useQuery({
     queryKey: ['group', groupId],
@@ -98,7 +105,7 @@ export function Workbench({
   });
 
   // Only multi-entry groups take a group decision; deviations and individuals
-  // are concluded through the entry route.
+  // record their disposition through the entry route.
   const conclude = useMutation({
     mutationFn: (body: { conclusion: Conclusion; basis: string; entryIds: string[] }) =>
       item?.kind === 'group'
@@ -106,7 +113,7 @@ export function Workbench({
         : concludeEntry(body.entryIds[0]!, { conclusion: body.conclusion, basis: body.basis }),
     onSuccess: async () => {
       await refresh();
-      onConcluded();
+      onReviewRecorded();
     },
   });
 
@@ -142,38 +149,39 @@ export function Workbench({
   const liveBasis = memberRows.length > 0 ? basisDetail(memberRows) : [];
 
   return (
-    <div className="wb">
+    <div className="wb" ref={workbench}>
       <div className="wbhead">
-        <h2>
-          {pairLabel(item)}
-          <span className="nm">{pairNames(item)}</span>
-          <span className="wbcount">
-            {item.entryCount} {item.entryCount === 1 ? 'entry' : 'entries'}
-          </span>
-        </h2>
-        <div className="wbmeta">
-          <span className="score">{liveScore.toFixed(2)}</span>
-          <span>pattern consistency</span>
-          <HelpTip label="Pattern consistency">{patternConsistencyHelp}</HelpTip>
-          <span className="dot" />
-          <span>{item.recurrence.label}</span>
-          {item.rulesFired.length > 0 && (
-            <span className="rulist">
-              {item.rulesFired.map((rule, i) => (
-                <span key={rule}>
-                  {i > 0 && <i className="seprule" />}
-                  <RuleTerm rule={rule} />
-                </span>
-              ))}
-            </span>
+        <div className="recordheading">
+          <div>
+            <span className="recordkicker">{kindLabel(item.kind)} review item</span>
+            <h2><span className="paircode mono">{pairLabel(item)}</span></h2>
+            <p>{pairNames(item)}</p>
+          </div>
+          <div className="recordcount"><b className="mono">{item.entryCount}</b>{item.entryCount === 1 ? 'entry' : 'entries'}</div>
+        </div>
+        <div className="recordmeta">
+          <span><b>Status</b>{item.decision ? 'Reviewed' : 'Open'}</span>
+          {item.kind === 'group' ? (
+            <>
+              <span><b>Pattern consistency <HelpTip label="Pattern consistency">{patternConsistencyHelp}</HelpTip></b>{liveScore.toFixed(2)}</span>
+              <span><b>Activity</b>{activityLabel(item)}</span>
+            </>
+          ) : (
+            <span><b>Selection criteria</b>{item.rulesFired.length}</span>
           )}
         </div>
       </div>
+      <nav className="recordnav" aria-label="Review item sections">
+        <a href="#review-overview">Overview</a>
+        <a href="#review-evidence">Evidence</a>
+        <a href="#review-investigation">Investigation</a>
+        <a href="#review-decision">Conclusion</a>
+      </nav>
 
       {sheet && (
         <div className="fx">
           {sheet.decision && (
-            <Concluded
+            <RecordedDecision
               decision={sheet.decision}
               onRevise={() => basisField.current?.focus()}
               onReopen={() => setAsk({ kind: 'reopen', decisionId: sheet.decision!.decisionId })}
@@ -183,6 +191,9 @@ export function Workbench({
             <Superseded key={prior.decisionId} prior={prior} />
           ))}
           {failure && <div className="warnline">{failure.message}</div>}
+          {item.kind === 'group' && (
+            <PatternSummary item={item} sheet={sheet} onSelectItem={onSelectItem} />
+          )}
 
           {item.kind === 'group' ? (
             <>
@@ -202,6 +213,22 @@ export function Workbench({
                 onMove={(entryIds) => setAsk({ kind: 'move', entryIds })}
               />
 
+              {item.rulesFired.length > 0 && (
+                <section className="sec">
+                  <div className="sech">
+                    <span className="lab">Selection criteria</span>
+                  </div>
+                  <div className="rulist criterialist">
+                    {item.rulesFired.map((rule, i) => (
+                      <span key={rule}>
+                        {i > 0 && <i className="seprule" />}
+                        <RuleTerm rule={rule} />
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              )}
+
               <section className="sec">
                 <div className="sech">
                   <span className="lab">Grouping basis</span>
@@ -212,9 +239,9 @@ export function Workbench({
                 />
               </section>
 
-              <section className="sec">
+              <section className="sec" id="review-investigation">
                 <div className="sech">
-                  <span className="lab">Procedures</span>
+                  <span className="lab">Investigation coverage</span>
                 </div>
                 <div className="proc">
                   {sheet.procedures.map((p) => (
@@ -293,6 +320,93 @@ export function Workbench({
   );
 }
 
+function PatternSummary({
+  item,
+  sheet,
+  onSelectItem,
+}: {
+  item: QueueItem;
+  sheet: GroupSheet;
+  onSelectItem: (groupId: string) => void;
+}) {
+  const activeMonths = item.recurrence.months.length;
+  const deviationCount = sheet.excludedDeviations.reduce(
+    (sum, deviation) => sum + deviation.entryIds.length,
+    0,
+  );
+
+  return (
+    <section className="sec patternsummary" id="review-overview" aria-label="Isolated deviations">
+      <div className="sech">
+        <span className="lab">Isolated deviations</span>
+        <span className="dstat">
+          {item.entryCount} pattern members · {activeMonths} active {activeMonths === 1 ? 'month' : 'months'} ·{' '}
+          {deviationCount} {deviationCount === 1 ? 'deviation' : 'deviations'}
+        </span>
+      </div>
+      {sheet.excludedDeviations.length === 0 ? (
+        <div className="neutralstate">No deviations were isolated from this pattern.</div>
+      ) : (
+        <div className="tpanel">
+          <table className="mtab deviationtable">
+            <thead>
+              <tr>
+                <th>Entry</th>
+                <th>Reason</th>
+                <th><span className="sr-only">Action</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {sheet.excludedDeviations.map((deviation) => (
+                <tr key={deviation.groupId}>
+                  <td className="mono signaltext">{deviation.entryIds.join(', ')}</td>
+                  <td>
+                    {deviation.reasons.length > 0
+                      ? sentence(deviation.reasons.map(plainDeviationReason).join('; '))
+                      : 'Isolated for separate review.'}
+                  </td>
+                  <td className="rowaction">
+                    <button className="btn q sm" onClick={() => onSelectItem(deviation.groupId)}>
+                      Review
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function sentence(text: string): string {
+  const value = text.charAt(0).toUpperCase() + text.slice(1);
+  return /[.!?]$/.test(value) ? value : `${value}.`;
+}
+
+function kindLabel(kind: QueueItem['kind']): string {
+  if (kind === 'group') return 'Pattern';
+  if (kind === 'deviation') return 'Deviation';
+  return 'Individual selection';
+}
+
+function activityLabel(item: QueueItem): string {
+  const months = item.recurrence.months;
+  if (months.length === 0) return 'No active months';
+  if (months.length === 1) {
+    return new Date(`${months[0]}-01T00:00:00`).toLocaleString('en-US', {
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+  return `${months.length} active months`;
+}
+
+function plainDeviationReason(reason: string): string {
+  return reason.replace(/^deviates:\s*/i, '');
+}
+
 /** What the population looked like when the conclusion was written. */
 function populationStamp(status: Status): string {
   if (status.status === 'empty' || status.status === 'load_failed') return 'no population loaded';
@@ -346,10 +460,10 @@ function Conclude({
   }, [busy, conclusion, basis, onRecord]);
 
   return (
-    <section className="sec">
+    <section className="sec" id="review-decision">
       <div className="sech">
         <span className="lab">{recorded ? 'Basis' : 'Draft basis'}</span>
-        <span className="dstat">{touched ? 'Edited' : 'Drafted from the grouping basis'}</span>
+        {touched && <span className="dstat">Edited</span>}
       </div>
 
       <div className="paper">
@@ -410,8 +524,8 @@ function draftBasis(sheet: GroupSheet, members: EntryRow[], removed: number): st
 
   const sentences = [
     count === 1
-      ? `This entry sits on account pair ${pairLabel(sheet)}.`
-      : `These ${count} entries share account pair ${pairLabel(sheet)}.`,
+      ? `This entry uses account combination ${pairLabel(sheet)}.`
+      : `These ${count} entries share account combination ${pairLabel(sheet)}.`,
     `${capitalise(detail.join(', '))}.`,
     'Line detail, prior-period comparison and preparer history were obtained for each entry.',
   ];
@@ -419,7 +533,7 @@ function draftBasis(sheet: GroupSheet, members: EntryRow[], removed: number): st
     sentences.push(
       `${removed} ${removed === 1 ? 'entry was' : 'entries were'} removed from this group as ${
         removed === 1 ? 'a deviation' : 'deviations'
-      } and ${removed === 1 ? 'is' : 'are'} concluded separately.`,
+      } and ${removed === 1 ? 'is' : 'are'} reviewed separately.`,
     );
   }
   return sentences.join(' ');
@@ -461,7 +575,7 @@ function Superseded({ prior }: { prior: SupersededDecision }) {
   return (
     <div className="cb sup struck">
       <div className="top">
-        <span className="sdot mute" />
+        <span className="decisionstate">Superseded</span>
         <b>{conclusionLabels[prior.conclusion]}</b>
         <span>superseded, {prior.reason}</span>
         <span className="who">
@@ -472,7 +586,7 @@ function Superseded({ prior }: { prior: SupersededDecision }) {
   );
 }
 
-function Concluded({
+function RecordedDecision({
   decision,
   onRevise,
   onReopen,
@@ -481,12 +595,12 @@ function Concluded({
   onRevise: () => void;
   onReopen: () => void;
 }) {
-  // Set aside is parked, not concluded, so it reads muted rather than verified.
+  // Set aside is parked, not reviewed, so it reads muted rather than verified.
   const parked = decision.conclusion === 'set-aside';
   return (
     <div className={parked ? 'cb sup' : 'cb'}>
       <div className="top">
-        <span className={parked ? "sdot mute" : "sdot"} />
+        <span className="decisionstate">{parked ? 'Set aside' : 'Reviewed'}</span>
         <b>{conclusionLabels[decision.conclusion]}</b>
         <span className="who">
           {decision.recordedBy ?? 'unattributed'}, {formatRecordedAt(decision.recordedAt)}

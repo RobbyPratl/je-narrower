@@ -56,7 +56,7 @@ export function MemberTable({
   };
 
   return (
-    <section className="sec">
+    <section className="sec" id="review-evidence">
       <div className="tpanel">
         <div className="tphead">
           <span className="tptitle">Members</span>
@@ -80,12 +80,12 @@ export function MemberTable({
                   aria-label="Select all shown"
                 />
               </th>
-              <th>entry</th>
-              <th>date</th>
-              <th className="r">amount</th>
-              <th>preparer</th>
-              <th className="r">score</th>
-              <th>deviates</th>
+              <th>Entry</th>
+              <th>Date</th>
+              <th className="r">Amount</th>
+              <th>Preparer</th>
+              <th className="r">Selection score</th>
+              <th>Deviation reason</th>
             </tr>
           </thead>
           <tbody>
@@ -144,7 +144,7 @@ export function MemberTable({
           <button
             className="btn q sm"
             disabled={busy || moveTargets === 0 || picked.size === members.length}
-            title={moveTargets === 0 ? 'No other group on this pair' : undefined}
+            title={moveTargets === 0 ? 'No other group uses this account combination' : undefined}
             onClick={act(onMove)}
           >
             Move to group

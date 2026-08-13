@@ -101,13 +101,13 @@ export function GroupPicker({
               {accountCode(target.accountA)} / {accountCode(target.accountB)}
             </span>
             <span className="r">
-              {target.entryCount}, {itemState(target) === 'concluded' ? 'concluded' : target.recurrence.label}
+              {target.entryCount}, {itemState(target) === 'reviewed' ? 'reviewed' : target.recurrence.label}
             </span>
           </button>
         ))}
       </div>
       <div className="exportnote" style={{ margin: 'var(--sp4) 0 0' }}>
-        Moving into a concluded group supersedes its conclusion.
+        Moving into a reviewed group supersedes its recorded conclusion.
       </div>
     </Modal>
   );

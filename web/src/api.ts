@@ -77,7 +77,14 @@ export interface QueueItem {
 }
 
 export interface Queue {
-  summary: { totalFlagged: number };
+  summary: {
+    totalFlagged: number;
+    reviewed: number;
+    open: number;
+    groups: number;
+    deviations: number;
+    individuals: number;
+  };
   items: QueueItem[];
 }
 
@@ -96,7 +103,11 @@ export interface GroupSheet {
   consistency: { score: number; detail: string[] };
   groupingBasis: { pair: string; detail: string[] };
   procedures: Array<{ label: string; done: number; total: number }>;
-  excludedDeviations: Array<{ entryId: string; reasons: string[] }>;
+  excludedDeviations: Array<{
+    groupId: string;
+    entryIds: string[];
+    reasons: string[];
+  }>;
   reviewStatus: QueueItem['reviewStatus'];
   decision: Decision | null;
   supersededDecisions: SupersededDecision[];
@@ -312,19 +323,19 @@ export function isPair(item: Pick<QueueItem, 'accountA' | 'accountB'>, pair: [st
   );
 }
 
-export type ItemState = 'open' | 'aside' | 'concluded';
+export type ItemState = 'open' | 'aside' | 'reviewed';
 
 export function itemState(item: QueueItem): ItemState {
   if (!item.decision) return 'open';
-  return item.decision.conclusion === 'set-aside' ? 'aside' : 'concluded';
+  return item.decision.conclusion === 'set-aside' ? 'aside' : 'reviewed';
 }
 
-/**
- * The queue summary counts entries in `totalFlagged` but groups in `reviewed`
- * and `open`, so those three never sum. Entry counts come from the items.
- */
-export function entryCounts(items: QueueItem[]) {
-  const counts = { open: 0, aside: 0, concluded: 0 };
-  for (const item of items) counts[itemState(item)] += item.entryCount;
+export function itemCounts(items: QueueItem[]) {
+  const counts = { open: 0, aside: 0, reviewed: 0 };
+  for (const item of items) counts[itemState(item)]++;
   return counts;
+}
+
+export function selectedEntryCount(items: QueueItem[]): number {
+  return items.reduce((sum, item) => sum + item.entryCount, 0);
 }

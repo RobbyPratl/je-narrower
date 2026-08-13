@@ -1,10 +1,12 @@
-import { accountCode, conclusionLabels, itemState, pairLabel, type ItemState, type QueueItem } from './api';
-
-const sections: Array<{ state: ItemState; title: string }> = [
-  { state: 'open', title: 'Open' },
-  { state: 'aside', title: 'Set aside' },
-  { state: 'concluded', title: 'Concluded' },
-];
+import { useMemo, useState } from 'react';
+import {
+  accountCode,
+  conclusionLabels,
+  itemState,
+  pairLabel,
+  type ItemState,
+  type QueueItem,
+} from './api';
 
 interface WorklistProps {
   items: QueueItem[];
@@ -15,43 +17,74 @@ interface WorklistProps {
 }
 
 export function Worklist({ items, selected, onSelect, pair, onClearPair }: WorklistProps) {
+  const [query, setQuery] = useState('');
+  const [state, setState] = useState<ItemState | 'all'>('all');
+  const rows = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return items.filter((item) => {
+      if (state !== 'all' && itemState(item) !== state) return false;
+      if (!term) return true;
+      return [
+        item.accountA,
+        item.accountB,
+        ...item.entryIds,
+        ...item.rulesFired,
+        kindLabel(item.kind),
+      ].some((value) => value.toLowerCase().includes(term));
+    });
+  }, [items, query, state]);
+
   return (
-    <div className="wl">
+    <aside className="wl" aria-label="Review queue">
       <div className="wlhead">
-        <span className="wltitle">Worklist</span>
+        <div className="wlheading">
+          <span className="wltitle">Review queue</span>
+          <span>{rows.length} of {items.length} items</span>
+        </div>
         {pair && (
           <button className="btn q sm" onClick={onClearPair}>
-            Clear {accountCode(pair[0])} / {accountCode(pair[1])}
+            Clear account combination filter
           </button>
         )}
       </div>
-      <div className="wlscroll">
-        {items.length === 0 && <div className="wlnone">Nothing flagged on this pair.</div>}
-        {sections.map(({ state, title }) => {
-          const rows = items.filter((item) => itemState(item) === state);
-          if (rows.length === 0) return null;
-          const entries = rows.reduce((sum, item) => sum + item.entryCount, 0);
-
-          return (
-            <div key={state}>
-              <div className="wlsec">
-                <span className="lab">{title}</span>
-                <span className="n">{entries}</span>
-              </div>
-              {rows.map((item) => (
-                <Row
-                  key={item.groupId}
-                  item={item}
-                  state={state}
-                  current={item.groupId === selected}
-                  onSelect={onSelect}
-                />
-              ))}
-            </div>
-          );
-        })}
+      {pair && <div className="activefilter">Account combination: {accountCode(pair[0])} / {accountCode(pair[1])}</div>}
+      <div className="wltools">
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search account, entry or criterion"
+          aria-label="Search review queue"
+        />
+        <select
+          value={state}
+          onChange={(event) => setState(event.target.value as ItemState | 'all')}
+          aria-label="Filter by review status"
+        >
+          <option value="all">All statuses</option>
+          <option value="open">Open</option>
+          <option value="reviewed">Reviewed</option>
+          <option value="aside">Set aside</option>
+        </select>
       </div>
-    </div>
+      <div className="wlcolumns" aria-hidden="true">
+        <span>Account combination / status</span>
+        <span>Type</span>
+        <span>Entries</span>
+      </div>
+      <div className="wlscroll">
+        {rows.length === 0 && <div className="wlnone">No review items match the current filters.</div>}
+        {rows.map((item) => (
+          <Row
+            key={item.groupId}
+            item={item}
+            state={itemState(item)}
+            current={item.groupId === selected}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
+    </aside>
   );
 }
 
@@ -66,36 +99,52 @@ function Row({
   current: boolean;
   onSelect: (groupId: string) => void;
 }) {
-  const deviation = item.kind === 'deviation';
-  const classes = ['it', deviation && 'dev', state === 'concluded' && 'done', state === 'aside' && 'aside']
-    .filter(Boolean)
-    .join(' ');
-
   return (
     <div
-      className={classes}
+      className="it"
       aria-current={current}
       role="button"
       tabIndex={0}
       onClick={() => onSelect(item.groupId)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
           onSelect(item.groupId);
         }
       }}
     >
-      <span className="g">{state === 'concluded' ? <span className="sdot" /> : deviation ? '!' : ''}</span>
-      <span className="p">{pairLabel(item)}</span>
+      <span className="itbody">
+        <span className="p">{pairLabel(item)}</span>
+        <span className={`rowstate ${state}`}>{stateLabel(item, state)} · {activityLabel(item)}</span>
+      </span>
+      <span className="ittype">{kindLabel(item.kind)}</span>
       <span className="c">{item.entryCount}</span>
-      <span className="r">{summary(item, state)}</span>
     </div>
   );
 }
 
-function summary(item: QueueItem, state: ItemState): string {
-  if (state === 'open') return item.recurrence.label;
-  if (state === 'aside') return 'aside';
-  // Concluded rows show the conclusion, which is the useful thing at a glance.
-  return conclusionLabels[item.decision!.conclusion].replace('Appropriate, ', '');
+function stateLabel(item: QueueItem, state: ItemState): string {
+  if (state === 'open') return 'Open';
+  if (state === 'aside') return 'Set aside';
+  return conclusionLabels[item.decision!.conclusion].replace('Appropriate, ', 'Reviewed: ');
+}
+
+function activityLabel(item: QueueItem): string {
+  const months = item.recurrence.months;
+  if (months.length === 0) return 'No activity period';
+  if (months.length === 1) return `Active ${monthLabel(months[0]!)}`;
+  return `Active in ${months.length} months`;
+}
+
+function monthLabel(month: string): string {
+  return new Date(`${month}-01T00:00:00`).toLocaleString('en-US', {
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function kindLabel(kind: QueueItem['kind']): string {
+  if (kind === 'group') return 'Pattern';
+  if (kind === 'deviation') return 'Deviation';
+  return 'Individual';
 }

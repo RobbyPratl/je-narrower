@@ -35,6 +35,15 @@ const rules: Record<string, { label: string; description: string }> = {
   },
 };
 
+const investigationSteps: Record<string, string> = {
+  get_entry_lines: 'Inspected journal-entry lines',
+  get_pair_history: 'Reviewed account-combination history',
+  get_pair_diff: 'Compared the account combination across periods',
+  get_similar_entries: 'Found similar historical entries',
+  get_user_activity: 'Reviewed preparer activity',
+  get_account_context: 'Reviewed account activity',
+};
+
 export const patternConsistencyHelp =
   'Internal grouping aid: 50% is the share posted by the most common preparer and 50% is amount similarity to the group median. It is not an audit conclusion.';
 
@@ -49,10 +58,14 @@ export function ruleDescription(rule: string): string {
   return rules[rule]?.description ?? 'Application-defined journal-entry selection criterion.';
 }
 
+export function investigationStepLabel(tool: string): string {
+  return investigationSteps[tool] ?? tool.replaceAll('_', ' ');
+}
+
 export function HelpTip({ label, children }: { label: string; children: ReactNode }) {
   return (
     <span className="help" tabIndex={0} aria-label={`${label}: ${String(children)}`}>
-      ?
+      Definition
       <span role="tooltip">{children}</span>
     </span>
   );
