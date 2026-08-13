@@ -2,6 +2,9 @@ modules = ["nodejs-20"]
 
 run = "npm exec --yes --package=pnpm@9.15.9 -- pnpm start:replit"
 
+[packager.features]
+enabledForHosting = false
+
 [deployment]
 build = "npm exec --yes --package=pnpm@9.15.9 -- pnpm install --frozen-lockfile --network-concurrency=1 --child-concurrency=1 && npm exec --yes --package=pnpm@9.15.9 -- pnpm build"
 run = "npm exec --yes --package=pnpm@9.15.9 -- pnpm start:replit"
