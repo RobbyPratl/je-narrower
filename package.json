@@ -1,7 +1,6 @@
 {
   "name": "je-narrower",
   "private": true,
-  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "build": "pnpm build:web && pnpm build:showcase && pnpm showcase:manifest",
     "build:web": "pnpm --filter @je-narrower/web build",

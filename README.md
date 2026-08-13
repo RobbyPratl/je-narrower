@@ -33,4 +33,4 @@ pnpm start
 
 The single Fastify process serves the showcase at `/`, the original application at `/demo-app/`, the API at `/api/*`, and the health check at `/health`.
 
-Replit provisions Node.js 20 explicitly, disables its automatic hosting package install, and invokes the pinned pnpm version through npm to avoid package-manager shim recursion. It then runs `pnpm start:replit`, which migrates the database and idempotently seeds the bundled Meridian demo population before starting the server.
+Replit provisions Node.js 20 explicitly and invokes pnpm 9.15.9 through npm for the configured build and run commands. The root manifest intentionally omits a `packageManager` field because Replit's automatic package-install phase can otherwise recursively ask pnpm to install itself. Startup runs `pnpm start:replit`, which migrates the database and idempotently seeds the bundled Meridian demo population before starting the server.
