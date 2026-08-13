@@ -1,6 +1,6 @@
-run = "pnpm start:replit"
+run = "npm exec --yes --package=pnpm@9.15.9 -- pnpm start:replit"
 
 [deployment]
-build = "pnpm install --frozen-lockfile && pnpm build"
-run = "pnpm start:replit"
+build = "npm exec --yes --package=pnpm@9.15.9 -- pnpm install --frozen-lockfile --network-concurrency=1 --child-concurrency=1 && npm exec --yes --package=pnpm@9.15.9 -- pnpm build"
+run = "npm exec --yes --package=pnpm@9.15.9 -- pnpm start:replit"
 deploymentTarget = "cloudrun"
