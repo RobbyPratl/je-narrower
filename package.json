@@ -1,0 +1,17 @@
+{
+  "name": "je-narrower",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "build": "pnpm build:web && pnpm build:showcase && pnpm showcase:manifest",
+    "build:web": "pnpm --filter @je-narrower/web build",
+    "build:showcase": "pnpm --filter @je-narrower/showcase build",
+    "showcase:manifest": "pnpm --filter @je-narrower/engine showcase:manifest",
+    "migrate": "pnpm --filter @je-narrower/engine migrate",
+    "seed:demo": "pnpm --filter @je-narrower/engine seed:demo",
+    "serve": "pnpm --filter @je-narrower/engine serve",
+    "web": "pnpm --filter @je-narrower/web dev",
+    "test": "pnpm --filter @je-narrower/engine test && pnpm --filter @je-narrower/showcase test",
+    "start": "pnpm migrate && pnpm serve"
+  }
+}

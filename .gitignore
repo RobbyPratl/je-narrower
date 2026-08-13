@@ -1,0 +1,67 @@
+# Dependencies and package-manager state
+node_modules/
+.pnpm-store/
+
+# Production builds and generated showcase data
+dist/
+build/
+showcase-manifest.json
+
+# Test and coverage output
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+*.lcov
+
+# Secrets and local environment configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+
+# Runtime state
+uploads/
+logs/
+*.log
+*.pid
+*.db
+*.sqlite
+*.sqlite3
+
+# Model artifacts
+*.gguf
+*.safetensors
+*.onnx
+*.pt
+*.pth
+
+# Python caches and environments used by support scripts
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Language and editor caches
+.cache/
+.metals/
+.bloop/
+.vscode/
+.idea/
+*.tsbuildinfo
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+
+# Local AI-tool state
+.claude/
+.codex/
+
+# Vendored upstream repository; not part of JE Narrower or its deployment
+infra/frappe_docker/

@@ -1,0 +1,729 @@
+<title>JE Testing Workspace</title>
+<style>
+@font-face{font-family:"Instrument Sans";src:url(data:font/woff2;base64,__FONT_SANS__) format("woff2");font-weight:400 600;font-style:normal;font-display:block}
+@font-face{font-family:"Martian Mono";src:url(data:font/woff2;base64,__FONT_MONO__) format("woff2");font-weight:400 500;font-style:normal;font-display:block}
+
+/* v5 palette. Colour encodes epistemic status, never hierarchy.
+   Committed single light world: v5 rejects dark-with-accent outright, and the
+   semantic encoding depends on these exact values. Every colour is painted. */
+:root{
+  --ground:#F7F8F9;
+  --paper:#FFFFFF;
+  --ink:#16181D;
+  --mute:#8A9099;
+  --inferred:#4C5FD5;
+  --signal:#C2410C;
+  --verified:#0F766E;
+  --r1:rgba(22,24,29,.06);
+  --r2:rgba(22,24,29,.13);
+  --hover:rgba(22,24,29,.035);
+  --sans:"Instrument Sans",system-ui,-apple-system,sans-serif;
+  --mono:"Martian Mono",ui-monospace,Menlo,monospace;
+  --row:30px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font-family:var(--sans);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased}
+/* mono is for figures only: numbers, account codes, entry ids, timestamps */
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.045em}
+.lab{font-size:11px;font-weight:500;letter-spacing:.045em;color:rgba(22,24,29,.48)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--ink);outline-offset:1px;border-radius:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.harness{display:flex;align-items:center;gap:14px;padding:11px 22px;
+  border-bottom:1px solid var(--r2);flex-wrap:wrap}
+.harness h1{font-size:12px;font-weight:600;margin:0;letter-spacing:-.005em}
+.harness .note{font-size:11px;color:var(--mute);margin-right:auto}
+.seg{display:flex;gap:1px;border:1px solid var(--r2);border-radius:4px;padding:2px;background:var(--paper)}
+.seg button{padding:3px 10px;border-radius:2px;font-size:11px;font-weight:500;color:rgba(22,24,29,.45)}
+.seg button[aria-pressed="true"]{background:rgba(22,24,29,.085);color:var(--ink)}
+
+.scroller{overflow-x:auto}
+.app{min-width:1280px;display:flex;flex-direction:column;height:800px;position:relative;background:var(--ground)}
+
+/* ---------- status ---------- */
+.status{display:flex;align-items:center;height:46px;padding:0 22px;
+  border-bottom:1px solid var(--r2);flex:none;background:var(--paper)}
+.status.bad{height:auto;padding:13px 22px;align-items:flex-start;
+  background:rgba(194,65,12,.06);border-bottom:2px solid var(--signal)}
+.status .lead{font-size:13px;font-weight:600;letter-spacing:-.005em}
+.status .sep{color:rgba(138,144,153,.7);margin:0 9px}
+.status .meta{font-size:11px;color:rgba(22,24,29,.62)}
+.status .meta.key{color:rgba(22,24,29,.9);font-weight:500}
+.toggles{margin-left:auto;display:flex;gap:6px}
+.toggles button{padding:5px 10px;border:1px solid var(--r2);border-radius:4px;background:var(--paper);
+  font-size:11px;font-weight:500;color:rgba(22,24,29,.55)}
+.toggles button:hover{border-color:rgba(22,24,29,.24)}
+.toggles button[aria-pressed="true"]{background:rgba(22,24,29,.075);border-color:rgba(22,24,29,.26);color:var(--ink)}
+
+.exc{display:flex;flex-direction:column;gap:9px;width:100%}
+.exc h2{margin:0;font-size:13px;font-weight:600;color:var(--signal);display:flex;align-items:center;gap:9px}
+.exc .sum{font-size:12px;color:rgba(22,24,29,.72);max-width:78ch}
+.exc table{border-collapse:collapse;font-size:11px}
+.exc td{padding:2px 24px 2px 0}
+.exc .neg{color:var(--signal)}
+.override{display:flex;gap:8px;align-items:center;margin-top:3px}
+.override input{font:inherit;font-size:12px;padding:6px 10px;width:330px;background:var(--paper);
+  border:1px solid rgba(22,24,29,.2);border-radius:4px;color:var(--ink)}
+.btn{padding:6px 12px;border:1px solid rgba(22,24,29,.24);border-radius:4px;background:var(--paper);
+  font-size:11px;font-weight:500}
+.btn:hover{border-color:rgba(22,24,29,.4)}
+.btn.q{border-color:var(--r2);color:rgba(22,24,29,.68)}
+
+/* ---------- profile ---------- */
+.profile{display:none;border-bottom:1px solid var(--r2);flex:none;background:var(--paper)}
+.profile[data-open="1"]{display:flex}
+.pcard{flex:1;padding:13px 20px 12px;border-right:1px solid var(--r1)}
+.pcard:last-child{border-right:0}
+.pcard h3{margin:0 0 9px}
+.bars{display:flex;align-items:flex-end;gap:3px;height:46px}
+.bars i{flex:1;display:block;background:rgba(22,24,29,.6);border-radius:1px 1px 0 0}
+.bars i.dim{background:rgba(22,24,29,.2)}
+.bars i.sig{background:rgba(194,65,12,.5)}
+.pcap{margin-top:8px;font-size:11px}
+.pcap b{font-weight:500}.pcap span{color:rgba(22,24,29,.38)}
+
+/* ---------- middle ---------- */
+.middle{display:flex;min-height:0;flex:1}
+.tablewrap{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper)}
+.controls{display:flex;align-items:center;gap:10px;height:40px;padding:0 22px;
+  border-bottom:1px solid var(--r2);flex:none}
+.progress{width:104px;height:4px;background:rgba(22,24,29,.08);border-radius:2px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--verified);opacity:.85}
+.spacer{margin-left:auto}
+
+.grid{overflow-y:auto;flex:1;position:relative}
+.qgrid{position:absolute;inset:0;pointer-events:none;z-index:0}
+.qgrid i{position:absolute;top:0;bottom:0;width:1px;background:rgba(138,144,153,.16)}
+.hdr,.main{display:grid;gap:16px;padding:0 22px;align-items:center;position:relative;z-index:1}
+.hdr{min-height:46px;padding-top:7px;padding-bottom:6px;border-bottom:1px solid var(--r2);
+  position:sticky;top:0;background:rgba(22,24,29,.018);z-index:3;backdrop-filter:none}
+/* every cell is wrapped so columns can carry a separator in the gap */
+.cel{display:flex;align-items:center;min-width:0;position:relative}
+.cel>*{flex:1;min-width:0}
+.cel:not(:first-child)::before,.hdr>*:not(:first-child)::before{
+  content:"";position:absolute;left:-8px;top:-6px;bottom:-6px;width:1px;background:rgba(22,24,29,.05)}
+.hdr>*:not(:first-child)::before{background:rgba(22,24,29,.09);top:-8px;bottom:-7px}
+.hdr .h{display:flex;align-items:center;gap:5px;position:relative;cursor:pointer;user-select:none;
+  font-size:11px;font-weight:500;letter-spacing:.045em;color:rgba(22,24,29,.48);white-space:nowrap}
+.hdr .cadhdr{flex-direction:column;align-items:stretch;gap:5px;cursor:default}
+.cadlab{font-size:11px;font-weight:500;letter-spacing:.045em;color:rgba(22,24,29,.48)}
+.hdr .h:hover{color:rgba(22,24,29,.8)}
+.hdr .h.r{justify-content:flex-end}
+.hdr .h .ar{font-size:9px;opacity:.9}
+.hdr .grip{position:absolute;right:-9px;top:-8px;bottom:-8px;width:10px;cursor:col-resize;z-index:4}
+.hdr .grip:hover{background:rgba(22,24,29,.1)}
+.axis{display:grid;grid-template-columns:repeat(12,1fr);font-family:var(--mono);letter-spacing:-.06em}
+.axis span{text-align:center;color:var(--mute);font-size:9px}
+.axis span.q{color:rgba(22,24,29,.5)}
+
+.row{border-bottom:1px solid var(--r1);position:relative}
+.row.dev{background:rgba(194,65,12,.035)}
+.main{min-height:var(--row);cursor:pointer}
+.row:hover .main{background:var(--hover)}
+.row.sel:before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--ink)}
+.pair{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:-.045em;
+  display:flex;gap:7px;align-items:center;white-space:nowrap}
+.pair .gl{color:rgba(22,24,29,.35);width:8px;flex:none}
+.row.dev .pair{color:var(--signal)}.row.dev .pair .gl{color:var(--signal)}
+.num{font-family:var(--mono);font-size:11px;letter-spacing:-.045em;
+  font-variant-numeric:tabular-nums;color:rgba(22,24,29,.62)}
+.num.r{text-align:right}
+.word{font-size:11.5px;color:rgba(22,24,29,.55)}
+
+/* cadence — the dominant mark. no per-row ticks; quarters sit behind the table. */
+.cad{position:relative;height:18px}
+.cad .mk{position:absolute;border-radius:50%;background:rgba(22,24,29,.8);
+  transform:translate(-50%,-50%);top:50%}
+.cad .mk.sig{background:var(--signal)}
+
+/* consistency — mid weight */
+.cbar{display:flex;align-items:center;gap:8px}
+.cbar .t{flex:1;height:4px;background:rgba(22,24,29,.08);border-radius:2px;overflow:hidden}
+.cbar .t i{display:block;height:100%;background:rgba(22,24,29,.55)}
+.cbar .v{font-family:var(--mono);font-size:10px;color:rgba(22,24,29,.35);letter-spacing:-.045em}
+.cbar.none .t{background:repeating-linear-gradient(90deg,rgba(138,144,153,.4) 0 3px,transparent 3px 7px);height:2px}
+
+/* amount — lightest weight */
+.amt{display:flex;align-items:center;gap:9px}
+.amt .track{position:relative;flex:1;height:8px}
+.amt .track:before{content:"";position:absolute;left:0;right:0;top:3.5px;height:1px;background:rgba(138,144,153,.22)}
+.amt .bar{position:absolute;top:2px;height:4px;border-radius:2px;background:rgba(22,24,29,.5);min-width:3px}
+.amt .v{font-family:var(--mono);font-size:11px;letter-spacing:-.045em;color:rgba(22,24,29,.72);white-space:nowrap}
+.row.dev .amt .bar{background:var(--signal)}
+.row.dev .amt .v{color:var(--signal)}
+
+.prep{display:flex;align-items:center;gap:6px;font-size:11.5px;color:rgba(22,24,29,.72)}
+.prep .sys{width:8px;height:8px;background:rgba(138,144,153,.8);border-radius:1px;flex:none}
+.st{display:flex;align-items:center;gap:6px;font-size:11.5px;color:rgba(22,24,29,.42)}
+.st.done{color:var(--verified)}
+.chips{display:flex;gap:4px;overflow:hidden}
+.chip{border:1px solid rgba(22,24,29,.13);border-radius:3px;padding:1px 6px;background:var(--ground);
+  font-family:var(--mono);font-size:10px;letter-spacing:-.045em;color:rgba(22,24,29,.6);white-space:nowrap}
+.row.dev .chip{border-color:rgba(194,65,12,.35);color:var(--signal);background:rgba(194,65,12,.04)}
+.more{font-size:10px;color:rgba(22,24,29,.35);align-self:center}
+
+.kids{display:none}
+.row[data-open="1"] .kids{display:block}
+.kid{display:grid;grid-template-columns:110px 62px 92px 46px 1fr 86px;gap:16px;
+  padding:5px 22px 5px 76px;align-items:center;cursor:pointer;border-top:1px solid var(--r1)}
+.kid:hover{background:var(--hover)}
+.kid[aria-selected="true"]{background:rgba(22,24,29,.05)}
+.kid .id{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:-.045em}
+
+/* ---------- memo, resizable ---------- */
+.memo{width:480px;flex:none;border-left:1px solid var(--r2);display:none;
+  flex-direction:column;overflow-y:auto;background:var(--paper);position:relative}
+.memo[data-open="1"]{display:flex}
+.mgrip{position:absolute;left:-3px;top:0;bottom:0;width:7px;cursor:col-resize;z-index:5}
+.mgrip:hover{background:rgba(22,24,29,.08)}
+.memo header{display:flex;align-items:center;gap:11px;padding:15px 18px 13px 22px;
+  border-bottom:1px solid var(--r2);position:sticky;top:0;background:var(--paper);z-index:2}
+.memo header .id{font-family:var(--mono);font-size:15px;font-weight:500;letter-spacing:-.045em}
+.memo header .sub{font-family:var(--mono);font-size:11px;color:rgba(22,24,29,.45);letter-spacing:-.045em}
+.sec{padding:15px 22px 17px;border-bottom:1px solid var(--r2)}
+.sec h4{margin:0 0 11px;display:flex;align-items:center;gap:8px;
+  font-size:11px;font-weight:600;letter-spacing:.05em;color:rgba(22,24,29,.55)}
+.sec h4 em{font-style:normal;font-weight:400;font-size:11px;color:rgba(22,24,29,.3);letter-spacing:0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 16px;font-size:11px}
+.kv dt{color:rgba(22,24,29,.5);font-family:var(--mono);letter-spacing:-.045em}
+.kv dd{margin:0;font-family:var(--mono);font-weight:500;letter-spacing:-.045em;color:rgba(22,24,29,.9)}
+.fact{display:flex;gap:7px;align-items:baseline;font-size:11.5px;color:rgba(22,24,29,.86);margin-bottom:6px}
+.fact .f{color:var(--mute);font-family:var(--mono);font-size:11px}
+.cite{font-size:10px;font-weight:600;color:var(--inferred);border:1px solid rgba(76,95,213,.3);
+  border-radius:3px;padding:0 4px;cursor:pointer;background:rgba(76,95,213,.05)}
+.cite:hover{background:rgba(76,95,213,.13)}
+.sec.interp{border-left:2px solid var(--inferred)}
+.sec.interp p{margin:0;font-size:13px;line-height:22px;color:rgba(22,24,29,.8);max-width:60ch}
+.sec.interp .warn{margin-top:9px;font-size:11px;color:var(--inferred)}
+.ver{display:flex;flex-direction:column;gap:6px;font-size:11.5px}
+.ver div{display:flex;gap:8px;align-items:center;color:rgba(22,24,29,.78)}
+.ver .un{color:var(--mute)}
+textarea{width:100%;min-height:158px;font-family:var(--sans);font-size:13px;line-height:21px;
+  padding:13px 14px;border:1px solid rgba(22,24,29,.14);border-radius:4px;
+  background:var(--ground);color:rgba(22,24,29,.86);resize:vertical}
+.concl{display:flex;flex-direction:column;gap:8px;margin-bottom:15px}
+.concl label{display:flex;gap:9px;align-items:center;font-size:12px;cursor:pointer}
+.concl input{accent-color:var(--verified);margin:0}
+.acts{display:flex;gap:8px}
+.acts .rec{border-color:rgba(15,118,110,.45);color:var(--verified);display:flex;align-items:center;gap:7px}
+
+/* ---------- matrix overlay: the visual hook ---------- */
+.scrim{position:fixed;inset:0;background:rgba(247,248,249,.82);z-index:50;display:none}
+.scrim[data-open="1"]{display:flex;align-items:center;justify-content:center}
+.ov{background:var(--paper);border:1px solid rgba(22,24,29,.22);border-radius:5px;
+  max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.ov header{display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--r2)}
+.ov h2{margin:0;font-size:13px;font-weight:600;letter-spacing:-.005em}
+.ov .body{display:flex;min-height:0;overflow:auto}
+.mx{padding:16px 18px;display:grid;gap:0}
+.mx .cl,.mx .rl{font-family:var(--mono);font-size:9px;letter-spacing:-.045em;color:rgba(22,24,29,.5);
+  display:flex;align-items:center;justify-content:center}
+.mx .rl{justify-content:flex-end;padding-right:8px}
+.mx .cell{border:.5px solid rgba(22,24,29,.05);cursor:pointer}
+.mx .cell:hover{outline:2px solid var(--ink);outline-offset:-1px;z-index:2}
+.mx .cell.NEW{background:var(--signal)}
+.mx .cell.SHIFTED{background:rgba(194,65,12,.45)}
+.mx .cell.VANISHED{background:repeating-linear-gradient(45deg,rgba(138,144,153,.5) 0 2px,transparent 2px 4px)}
+.mx .cell.hi{outline:2px solid var(--ink);outline-offset:-1px}
+.side{width:250px;flex:none;border-left:1px solid var(--r2);padding:16px 18px;
+  display:flex;flex-direction:column;gap:14px}
+.side .rd{display:flex;flex-direction:column;gap:6px}
+.side .rd .p{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:-.045em}
+.side .rd .nm{font-size:11.5px;color:rgba(22,24,29,.6)}
+.key{display:flex;flex-direction:column;gap:7px;font-size:11px;color:rgba(22,24,29,.62)}
+.key div{display:flex;align-items:center;gap:9px}
+.key i{width:16px;height:11px;flex:none;border:.5px solid rgba(22,24,29,.08)}
+.hint{font-size:11px;color:var(--mute)}
+
+/* ---------- empty ---------- */
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;padding:40px}
+.empty .k{font-size:11px;color:rgba(22,24,29,.38);letter-spacing:.045em}
+.empty .h{font-size:15px;font-weight:500;letter-spacing:-.01em}
+.empty .s{font-family:var(--mono);font-size:11px;color:rgba(22,24,29,.4);letter-spacing:-.045em}
+
+.pop{position:fixed;z-index:60;background:var(--paper);border:1px solid rgba(22,24,29,.2);
+  border-radius:4px;padding:11px 13px;font-family:var(--mono);font-size:11px;letter-spacing:-.045em;
+  max-width:340px;display:none}
+.pop[data-open="1"]{display:block}
+.pop b{display:block;color:rgba(22,24,29,.42);font-weight:400;margin-bottom:6px}
+.cols{display:none;position:absolute;right:22px;top:52px;width:290px;z-index:20;background:var(--paper);
+  border:1px solid rgba(22,24,29,.2);border-radius:5px;padding:15px}
+.cols[data-open="1"]{display:block}
+.cols h4{margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.05em;color:rgba(22,24,29,.5)}
+.cols label{display:flex;gap:9px;align-items:center;font-size:12px;padding:3px 0;cursor:pointer}
+.cols input{accent-color:var(--ink);margin:0}
+.cols hr{border:0;border-top:1px solid var(--r1);margin:13px 0}
+.dens{display:flex;gap:1px;border:1px solid var(--r2);border-radius:4px;padding:2px}
+.dens button{flex:1;padding:4px;border-radius:2px;font-size:11px;color:rgba(22,24,29,.5)}
+.dens button[aria-pressed="true"]{background:rgba(22,24,29,.085);color:var(--ink)}
+</style>
+
+<div class="harness">
+  <h1>JE testing workspace</h1>
+  <span class="note">v5 prototype &middot; resizable panels, summoned graph</span>
+  <div class="seg" role="group" aria-label="Population state">
+    <button data-state="ok" aria-pressed="true">Reconciled</button>
+    <button data-state="bad" aria-pressed="false">Unreconciled</button>
+    <button data-state="none" aria-pressed="false">No population</button>
+  </div>
+</div>
+
+<div class="scroller">
+<div class="app">
+  <div id="status"></div>
+  <div class="profile" id="profile"></div>
+  <div class="cols" id="cols"></div>
+  <div class="middle">
+    <div class="tablewrap">
+      <div class="controls" id="controls"></div>
+      <div class="grid" id="grid"></div>
+    </div>
+    <aside class="memo" id="memo" aria-label="Memo drawer"></aside>
+  </div>
+</div>
+</div>
+<div class="scrim" id="scrim"></div>
+<div class="pop" id="pop"></div>
+
+<script>
+"use strict";
+const TICK='<svg width="12" height="10" viewBox="0 0 12 10" aria-hidden="true" style="flex:none"><path d="M.5 5.4C1.6 6.2 2.8 7.4 3.9 9.2 5.8 5.6 8.2 2.4 11 .5" fill="none" stroke="CLR" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const tick=(c)=>TICK.replace('CLR',c||'#0F766E');
+const CROSS='<svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true" style="flex:none"><path d="M.6.6C3.1 3.4 6.6 6.6 9.6 9.6M9.6.6C7.1 3.4 3.6 6.6.6 9.6" fill="none" stroke="#C2410C" stroke-width="1.75" stroke-linecap="round"/></svg>';
+
+// One shared amount scale for every row. v5 forbids per-row auto-scaling; a square
+// root keeps ordering honest while giving 2-13k rows resolution a linear scale
+// against an 88.4k outlier destroys.
+const AMAX=92000, ax=(v)=>Math.sqrt(Math.min(v,AMAX)/AMAX)*100;
+const k=(v)=>v>=1000?(v/1000).toFixed(1).replace(/\.0$/,'')+'k':String(v);
+const norm=(p)=>p.split('/').map(s=>s.trim()).sort().join('|');
+const evenly=(a)=>Array.from({length:12},(_,i)=>({m:i,f:.5,amt:a}));
+const at=(m,f,amt,dev)=>({m,f,amt,dev});
+
+const ROWS=[
+ {kind:'group',pair:'6210 / 2110',n:45,marks:evenly(8600),c:.95,amt:[8200,9100,8600],prep:{t:'one',l:'R'},st:'open',rules:['round_amount','off_hours'],rec:'monthly'},
+ {kind:'group',pair:'5100 / 1590',n:12,marks:evenly(4000),c:.93,amt:[4000,4000,4000],prep:{t:'sys'},st:'open',rules:['off_hours'],rec:'monthly'},
+ {kind:'group',pair:'1100 / 4200',n:28,marks:evenly(12700),c:.88,amt:[12400,13100,12700],prep:{t:'one',l:'A'},st:'open',rules:['round_amount'],rec:'monthly'},
+ {kind:'deviation',pair:'6210 / 2110',n:1,marks:[at(7,.52,88400,1)],c:null,amt:[88400,88400,88400],prep:{t:'one',l:'M'},st:'open',rules:['deviation','amt 5x median','new preparer'],rec:'once'},
+ {kind:'group',pair:'4010 / 2300',n:3,open:1,marks:[at(8,.45,25000),at(8,.93,25000),at(9,.38,40000)],c:.33,amt:[25000,40000,25000],prep:{t:'two',l:'R,M'},st:'open',rules:['pair_rarity','new_pair','round_amount'],rec:'emergent',
+  kids:[{id:'ACC-JV-0417',d:'14 Sep',a:'25,000.00',s:.62,rules:['pr','np','ra'],st:'open'},
+        {id:'ACC-JV-0463',d:'28 Sep',a:'25,000.00',s:.62,rules:['pr','np','ra'],st:'open'},
+        {id:'ACC-JV-0501',d:'12 Oct',a:'40,000.00',s:.71,rules:['pr','np'],st:'reviewed'}]},
+ {kind:'group',pair:'5200 / 1000',n:18,marks:evenly(2250),c:.91,amt:[2100,2400,2250],prep:{t:'sys'},st:'reviewed',rules:['off_hours'],rec:'monthly'},
+ {kind:'individual',pair:'6800 / 2210',n:1,marks:[at(10,.6,15000)],c:null,amt:[15000,15000,15000],prep:{t:'one',l:'R'},st:'reviewed',rules:['round_amount'],rec:'once'},
+ {kind:'deviation',pair:'5100 / 1590',n:1,marks:[at(2,.34,41200,1)],c:null,amt:[41200,41200,41200],prep:{t:'one',l:'A'},st:'open',rules:['deviation','amt 9x median'],rec:'once'},
+ {kind:'group',pair:'4010 / 1100',n:9,marks:[at(1,.4,6000),at(3,.5,7400),at(5,.3,11200),at(6,.7,8100),at(8,.2,6600),at(9,.8,9900),at(11,.45,7200)],c:.72,amt:[6000,11200,7400],prep:{t:'two',l:'R,A'},st:'open',rules:['pair_rarity'],rec:'scattered'},
+ {kind:'group',pair:'2400 / 1000',n:24,marks:evenly(3100),c:.90,amt:[2900,3300,3100],prep:{t:'sys'},st:'reviewed',rules:['off_hours'],rec:'monthly'},
+ {kind:'individual',pair:'7100 / 2110',n:1,marks:[at(5,.28,32500)],c:null,amt:[32500,32500,32500],prep:{t:'one',l:'M'},st:'open',rules:['round_amount','date_gap'],rec:'once'},
+ {kind:'group',pair:'1400 / 5100',n:16,marks:Array.from({length:8},(_,i)=>at(i,.5,5300)),c:.86,amt:[5100,5600,5300],prep:{t:'one',l:'A'},st:'open',rules:['pair_rarity','round_amount'],rec:'stopped'}
+];
+
+const CASE={'ACC-JV-0417':{
+  date:'14 Sep 2025',amount:'25,000.00',
+  engine:[['pair_rarity',.81],['new_pair',.74],['round_amount',.40]],composite:.62,
+  source:[['posted 2025-09-14 02:00 by accountant@',1],['narration "Q3 deferral adjustment"',2],['2 lines · balanced',3]],
+  computed:[['8x median for account 4010',4],['preparer posts 4010 in 3% of cases',5]],
+  interp:'Consistent with a newly introduced deferral process rather than an isolated adjustment.',
+  verifier:[['5 source rows resolved',0],['2 computations reproduced',0],['1 interpretation — unverifiable by design',1]],
+  memo:'Entry ACC-JV-0417 was flagged for pair rarity, new-pair emergence, and round amount. The pairing 4010/2300 does not appear in P1 [1]. The amount is 8x the median for account 4010 [4]. Posted 02:00 by accountant@ [1], who posts to this account in 3% of cases [5].\n\nPopulation: reconciled, 1,972 entries, gl_p1.csv sha256 a3f2…'}};
+const CITE={
+ 1:{h:'entry · ACC-JV-0417',b:'posted_at 2025-09-14T02:00:00Z\nuser accountant@example.com\nperiod P2\nsource Journal Entry'},
+ 2:{h:'entry · narration',b:'"Q3 deferral adjustment"'},
+ 3:{h:'lines · ACC-JV-0417',b:'line-1 4010 debit 2,500,000\nline-2 2300 credit 2,500,000\nbalanced true'},
+ 4:{h:'computed · median',b:'account 4010 median 312,500 cents\nthis entry 2,500,000 cents\nratio 8.0x\nformula median(totalAmount where account=4010)'},
+ 5:{h:'computed · preparer share',b:'accountant@ postings to 4010: 4\ntotal postings to 4010: 133\nshare 3.0%'}};
+
+/* ---------------- account pair matrix ---------------- */
+const ACCTS=[['1000','Cash'],['1100','Bank'],['1200','Prepaid expenses'],['1400','Stock in hand'],
+ ['1590','Accum depreciation'],['1600','Equipment'],['2110','Accrued liabilities'],['2210','Creditors'],
+ ['2300','Deferred revenue'],['2400','Payroll withholding'],['2500','Tax payable'],['3000','Retained earnings'],
+ ['4010','Sales revenue'],['4200','Installation services'],['4300','Other income'],['5100','COGS'],
+ ['5200','Freight'],['6210','Consulting'],['6300','Depreciation'],['6800','Utilities'],
+ ['7100','Travel'],['7300','Insurance']];
+const FORCED={'2300|4010':['NEW',0,3],'2210|6800':['NEW',0,4],'2110|7100':['NEW',0,2],
+ '1400|4200':['NEW',0,6],'2500|4300':['NEW',0,3],'2110|2210':['SHIFTED',31,64],
+ '1400|2400':['VANISHED',18,0],'1200|7300':['VANISHED',9,0],
+ '2110|6210':['STABLE',22,23],'1590|5100':['STABLE',6,6],'1100|4200':['STABLE',14,14],
+ '1000|5200':['STABLE',9,9],'1100|4010':['STABLE',5,4],'1000|2400':['STABLE',12,12],
+ '1400|5100':['STABLE',8,8]};
+let PAIRS=null;
+function buildPairs(){
+  if(PAIRS)return PAIRS;
+  PAIRS={};let s=20250914;
+  const rnd=()=>{s=(s*1664525+1013904223)%4294967296;return s/4294967296;};
+  for(let i=0;i<ACCTS.length;i++)for(let j=0;j<i;j++){
+    const key=[ACCTS[j][0],ACCTS[i][0]].sort().join('|');
+    if(FORCED[key]){const[st,p1,p2]=FORCED[key];PAIRS[key]={st,p1,p2};continue;}
+    const r=rnd();
+    if(r<.46)continue;                                  // most account pairs never occur
+    if(r<.50){PAIRS[key]={st:'NEW',p1:0,p2:1+Math.floor(rnd()*4)};}
+    else if(r<.535){const c=2+Math.floor(rnd()*14);PAIRS[key]={st:'VANISHED',p1:c,p2:0};}
+    else if(r<.59){const a=4+Math.floor(rnd()*20);PAIRS[key]={st:'SHIFTED',p1:a,p2:Math.round(a*(1.8+rnd()))};}
+    else {const c=1+Math.floor(rnd()*24);PAIRS[key]={st:'STABLE',p1:c,p2:c+Math.round((rnd()-.5)*2)};}
+  }
+  return PAIRS;
+}
+
+let state={pop:'ok',profile:0,cols:0,filter:'open',kind:'group',sel:null,density:30,edge:null,
+  sort:{col:'consist',dir:-1},memoW:480,gmode:'diff',
+  hidden:new Set(['recurrence','composite','period','gap','lines','case']),colw:{}};
+const el=(id)=>document.getElementById(id);
+const show=(id)=>!state.hidden.has(id);
+
+/* ---------------- columns ---------------- */
+// Named months, not initials — J/F/M/A/M/J/J/A/S/O/N/D repeats four letters and
+// can only be read by someone who already knows it's a calendar. Quarter starts
+// carry slightly more weight, matching the quarter dividers behind the table.
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const AXIS=`<span class="h cadhdr"><span class="cadlab">cadence</span><span class="axis">${
+  MONTHS.map((m,i)=>`<span class="${i%3===0?'q':''}">${m}</span>`).join('')}</span></span>`;
+const dash=()=>'<span style="color:rgba(22,24,29,.22)">—</span>';
+const glyph=(r)=>r.kind==='deviation'?'!':r.kind==='individual'?'·':(r.open?'v':'>');
+function cad(marks){
+  return `<div class="cad">${marks.map(m=>{
+    const r=1.7+Math.sqrt(Math.min(m.amt,AMAX)/AMAX)*3.4;
+    return `<span class="mk${m.dev?' sig':''}" style="left:${(m.m+m.f)/12*100}%;width:${r*2}px;height:${r*2}px"></span>`;
+  }).join('')}</div>`;
+}
+function amtCell(a){const[lo,hi]=a;
+  return `<div class="amt"><span class="track"><span class="bar" style="left:${ax(lo)}%;width:${Math.max(ax(hi)-ax(lo),1.5)}%"></span></span><span class="v">${lo===hi?k(lo):k(lo)+'–'+k(hi)}</span></div>`;}
+function prepCell(p){return p.t==='sys'
+  ?`<span class="prep"><span class="sys"></span>system</span>`
+  :`<span class="prep">${p.l}</span>`;}
+function stCell(s){return s==='open'?`<span class="st">open</span>`
+  :`<span class="st done">${tick()}${s}</span>`;}
+function chipsCell(r,max){
+  const vis=r.rules.slice(0,max),rest=r.rules.length-vis.length;
+  return `<span class="chips">${vis.map(x=>`<span class="chip">${x}</span>`).join('')}${rest?`<span class="more">+${rest}</span>`:''}</span>`;}
+
+const COLS={
+ pair:      {w:150,lab:'Pair',              h:'Pair',    sort:r=>r.pair, c:r=>`<span class="pair"><span class="gl">${glyph(r)}</span>${r.pair}</span>`},
+ count:     {w:62, lab:'Entry count',       h:'entries', cls:'r',sort:r=>r.n, c:r=>`<span class="num r">${r.n}</span>`},
+ cadence:   {w:0,  lab:'Cadence sparkline', h:AXIS,      c:r=>cad(r.marks)},
+ consist:   {w:104,lab:'Consistency bar',   h:'consist', sort:r=>r.c===null?-1:r.c, c:r=>r.c===null
+              ?'<span class="cbar none"><span class="t"></span></span>'
+              :`<span class="cbar"><span class="t"><i style="width:${r.c*100}%"></i></span><span class="v">${r.c.toFixed(2)}</span></span>`},
+ rules:     {w:186,lab:'Rules fired',       h:'rules fired', c:r=>chipsCell(r,2)},
+ amount:    {w:158,lab:'Amount range',      h:'amount',  sort:r=>r.amt[1], c:r=>amtCell(r.amt)},
+ prep:      {w:74, lab:'Preparer',          h:'prep',    sort:r=>r.prep.l||'sys', c:r=>prepCell(r.prep)},
+ status:    {w:90, lab:'Review status',     h:'status',  sort:r=>r.st, c:r=>stCell(r.st)},
+ recurrence:{w:92, lab:'Recurrence label',  h:'recurs',  sort:r=>r.rec, c:r=>`<span class="word">${r.rec}</span>`},
+ composite: {w:74, lab:'Composite score',   h:'composite',cls:'r',c:r=>`<span class="num r">${r.kids?dash():'0.71'}</span>`},
+ period:    {w:54, lab:'Period',            h:'period',  c:()=>`<span class="num">P2</span>`},
+ gap:       {w:62, lab:'Posted vs effective',h:'gap',cls:'r',c:r=>`<span class="num r">${r.kind==='deviation'?'+1d':dash()}</span>`},
+ lines:     {w:54, lab:'Line count',        h:'lines',cls:'r',c:r=>`<span class="num r">${r.kids?dash():'2'}</span>`},
+ case:      {w:82, lab:'Case status',       h:'case',    c:r=>`<span class="word">${r.st==='open'?'drafted':'closed'}</span>`}
+};
+const ORDER=['pair','count','cadence','consist','rules','amount','prep','status',
+             'recurrence','composite','period','gap','lines','case'];
+const activeCols=()=>ORDER.filter(id=>show(id));
+const cw=(id)=>state.colw[id]!==undefined?state.colw[id]:COLS[id].w;
+
+/* ---------------- status ---------------- */
+function renderStatus(){
+  const s=el('status');
+  if(state.pop==='bad'){
+    s.className='status bad';
+    s.innerHTML=`<div class="exc">
+      <h2>${CROSS} Population unreconciled</h2>
+      <div class="sum">Gross difference <span class="mono">12,480.00</span> across 2 accounts. Net <span class="mono">0.00</span> — the differences offset, so the net alone would hide both. Conclusions are blocked until this reconciles or you record an override.</div>
+      <table class="mono"><tbody>
+        <tr><td>1100</td><td>Bank</td><td>P2</td><td>+6,240.00</td></tr>
+        <tr><td>2300</td><td>Deferred revenue</td><td>P2</td><td class="neg">−6,240.00</td></tr></tbody></table>
+      <div class="override"><input id="ovr" placeholder="Reason for override" aria-label="Reason for override">
+        <button class="btn" id="ovrbtn">Record override</button></div></div>`;
+    s.querySelector('#ovrbtn').onclick=()=>{
+      const v=s.querySelector('#ovr').value.trim();
+      if(!v){s.querySelector('#ovr').focus();return;}
+      state.pop='ok';state.override=v;render();};
+    return;
+  }
+  s.className='status';
+  const ov=state.override?`<span class="sep">·</span><span class="meta" style="color:var(--verified)">override recorded</span>`:'';
+  s.innerHTML=`${tick()}<span style="width:9px"></span><span class="lead">Reconciled</span>
+    <span class="sep">·</span><span class="meta mono">meridian-2025</span>
+    <span class="sep">·</span><span class="meta mono">FY25 P1-P2</span>
+    <span class="sep">·</span><span class="meta mono">1,972 entries</span>
+    <span class="sep">·</span><span class="meta mono key">203 flagged</span>${ov}
+    <span class="toggles">
+      <button data-t="profile" aria-pressed="${!!state.profile}">profile</button>
+      <button data-t="graph" aria-pressed="false">graph</button>
+      <button data-t="cols" aria-pressed="${!!state.cols}">columns</button></span>`;
+  s.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{
+    const t=b.dataset.t;
+    if(t==='graph'){openMatrix();return;}
+    state[t]=state[t]?0:1;render();});
+}
+
+/* ---------------- profile ---------------- */
+const PROF=[
+ {h:'Entry size',bars:[42,100,58,30,16,9,6,4,3,6],cap:['median 3','· 2–34 lines'],cut:7},
+ {h:'Entries by month',bars:[52,61,74,68,83,71,66,79,88,100,92,77],cap:['Jan–Dec 2025','· P1 / P2'],half:1},
+ {h:'Top accounts',bars:[100,88,71,63,49,41,33,26,19,13,9,6],cap:['34 accounts','· 82% in top 12']},
+ {h:'Flags by rule',bars:[100,58,44,31,23,14,10],cap:['203 flagged','· 10.3% of population'],sig:1}];
+function renderProfile(){
+  const p=el('profile');p.dataset.open=state.profile?1:0;
+  p.innerHTML=PROF.map(c=>`<div class="pcard"><h3 class="lab">${c.h}</h3><div class="bars">${
+    c.bars.map((v,i)=>{let cl=c.sig?'sig':'';if(c.cut!==undefined&&i>=c.cut)cl='dim';if(c.half&&i<6)cl='dim';
+      return `<i class="${cl}" style="height:${v}%"></i>`;}).join('')}</div>
+    <div class="pcap mono"><b>${c.cap[0]}</b> <span>${c.cap[1]}</span></div></div>`).join('');
+}
+
+/* ---------------- controls ---------------- */
+function renderControls(){
+  const c=el('controls');
+  const f=state.edge?`<button class="btn q" id="clr">pair ${state.edge.replace('|',' / ')} ✕</button>`:'';
+  c.innerHTML=`<span class="lab">Reviewed</span><span class="mono" style="font-weight:500">45 / 203</span>
+    <span class="progress"><i style="width:${45/203*100}%"></i></span>${f}
+    <span class="spacer"></span>
+    <span class="seg">${['open','reviewed','all'].map(o=>`<button data-f="${o}" aria-pressed="${state.filter===o}">${o}</button>`).join('')}</span>
+    <span class="seg">${['group','dev'].map(o=>`<button data-k="${o}" aria-pressed="${state.kind===o}">${o}</button>`).join('')}</span>`;
+  c.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{state.filter=b.dataset.f;render();});
+  c.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{state.kind=state.kind===b.dataset.k?null:b.dataset.k;render();});
+  const cl=c.querySelector('#clr'); if(cl)cl.onclick=()=>{state.edge=null;render();};
+}
+function visible(){
+  let rows=ROWS.filter(r=>{
+    if(state.filter==='open'&&r.st!=='open')return false;
+    if(state.filter==='reviewed'&&r.st==='open')return false;
+    if(state.kind==='dev'&&r.kind!=='deviation')return false;
+    if(state.edge&&norm(r.pair)!==state.edge)return false;
+    return true;});
+  const S=COLS[state.sort.col];
+  if(S&&S.sort)rows=rows.slice().sort((a,b)=>{
+    const x=S.sort(a),y=S.sort(b);
+    return (x<y?-1:x>y?1:0)*state.sort.dir;});
+  return rows;
+}
+
+/* ---------------- grid ---------------- */
+function renderGrid(){
+  const g=el('grid'),rows=visible(),cols=activeCols();
+  const tmpl=cols.map(id=>id==='cadence'?'minmax(240px,1fr)':cw(id)+'px').join(' ');
+  const gs=`style="grid-template-columns:${tmpl}"`;
+  const hdr=`<div class="hdr" ${gs}>${cols.map(id=>{
+    const C=COLS[id],act=state.sort.col===id;
+    if(C.h===AXIS)return AXIS;
+    return `<span class="h ${C.cls||''}" data-sort="${id}">${C.h}${
+      C.sort?`<span class="ar">${act?(state.sort.dir>0?'▲':'▼'):''}</span>`:''}
+      <span class="grip" data-grip="${id}"></span></span>`;}).join('')}</div>`;
+  const body=rows.map(r=>`
+    <div class="row ${r.kind==='deviation'?'dev':''} ${state.sel===r.pair?'sel':''}" data-i="${ROWS.indexOf(r)}" data-open="${r.open?1:0}">
+      <div class="main" tabindex="0" role="button" aria-expanded="${!!r.open}" ${gs}>
+        ${cols.map(id=>`<span class="cel">${COLS[id].c(r)}</span>`).join('')}</div>
+      <div class="kids">${(r.kids||[]).map(kd=>`
+        <div class="kid" data-id="${kd.id}" tabindex="0" role="button" aria-selected="${state.sel===kd.id}">
+          <span class="id">${kd.id}</span><span class="num">${kd.d}</span>
+          <span class="num r" style="font-weight:500;color:rgba(22,24,29,.9)">${kd.a}</span>
+          <span class="num r">${kd.s.toFixed(2)}</span>
+          <span class="chips">${kd.rules.map(x=>`<span class="chip">${x}</span>`).join('')}</span>
+          ${stCell(kd.st)}</div>`).join('')}</div></div>`).join('');
+  const quarters=show('cadence')?`<div class="qgrid">${[1,2,3].map(q=>{
+    const cIdx=cols.indexOf('cadence');
+    const before=cols.slice(0,cIdx).reduce((a,id)=>a+cw(id)+16,0)+22;
+    return `<i style="left:calc(${before}px + (100% - ${before}px - ${cols.slice(cIdx+1).reduce((a,id)=>a+cw(id)+16,0)+22}px) * ${q/4})"></i>`;
+  }).join('')}</div>`:'';
+  g.innerHTML=quarters+hdr+(rows.length?body:
+    `<div class="empty"><span class="k lab">NO ROWS MATCH</span><span class="h">Clear the filter to see the full queue.</span></div>`);
+
+  g.querySelectorAll('[data-sort]').forEach(h=>h.onclick=(e)=>{
+    if(e.target.dataset.grip)return;
+    const id=h.dataset.sort; if(!COLS[id].sort)return;
+    state.sort = state.sort.col===id?{col:id,dir:-state.sort.dir}:{col:id,dir:-1};
+    render();});
+  g.querySelectorAll('[data-grip]').forEach(gr=>gr.onmousedown=(e)=>{
+    e.preventDefault();e.stopPropagation();
+    const id=gr.dataset.grip,x0=e.clientX,w0=cw(id);
+    const mv=(ev)=>{state.colw[id]=Math.max(40,w0+ev.clientX-x0);
+      document.querySelectorAll('.hdr,.main').forEach(n=>n.style.gridTemplateColumns=
+        activeCols().map(i=>i==='cadence'?'minmax(240px,1fr)':cw(i)+'px').join(' '));};
+    const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);render();};
+    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);});
+  g.querySelectorAll('.row .main').forEach(m=>{
+    const r=ROWS[+m.parentElement.dataset.i];
+    const act=()=>{if(r.kids){r.open=r.open?0:1;}else{state.sel=state.sel===r.pair?null:r.pair;}render();};
+    m.onclick=act;
+    m.onkeydown=(e)=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();act();}};});
+  g.querySelectorAll('.kid').forEach(kd=>{
+    const act=()=>{state.sel=kd.dataset.id;render();};
+    kd.onclick=(e)=>{e.stopPropagation();act();};
+    kd.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act();}};});
+}
+
+/* ---------------- memo ---------------- */
+function renderMemo(){
+  const m=el('memo'),c=CASE[state.sel];
+  m.dataset.open=state.sel?1:0;
+  m.style.width=state.memoW+'px';
+  if(!state.sel){m.innerHTML='';return;}
+  const grip='<div class="mgrip" id="mgrip"></div>';
+  if(!c){
+    m.innerHTML=grip+`<header><span class="id">${state.sel}</span><span style="margin-left:auto"></span>
+      <button class="btn q" id="mx">Close</button></header>
+      <div class="sec"><h4>NO CASE FILE <em>engine</em></h4>
+      <p style="margin:0;font-size:12px;color:rgba(22,24,29,.6);max-width:52ch">This group has not been investigated. Run investigation to draft a memo from its entries.</p>
+      <div style="margin-top:13px"><button class="btn">Investigate group</button></div></div>`;
+  } else {
+    const cited=(t,n)=>`${t} <span class="cite" data-c="${n}" role="button" tabindex="0">${n}</span>`;
+    m.innerHTML=grip+`
+     <header><span class="id">${state.sel}</span><span class="sub">${c.date} · ${c.amount}</span>
+       <span style="margin-left:auto"></span><button class="btn q" id="mx">Close</button></header>
+     <div class="sec"><h4>FLAGGED BY <em>engine</em></h4>
+       <dl class="kv">${c.engine.map(([r,v])=>`<dt>${r}</dt><dd>${v.toFixed(2)}</dd>`).join('')}
+       <dt style="color:rgba(22,24,29,.9)">composite</dt><dd>${c.composite.toFixed(2)}</dd></dl></div>
+     <div class="sec"><h4>SOURCE FACTS <em>retrieved · checkable</em></h4>
+       ${c.source.map(([t,n])=>`<div class="fact">${cited(t,n)}</div>`).join('')}</div>
+     <div class="sec"><h4>COMPUTED <em>derived · formula inspectable</em></h4>
+       ${c.computed.map(([t,n])=>`<div class="fact"><span class="f">ƒ</span>${cited(t,n)}</div>`).join('')}</div>
+     <div class="sec interp"><h4 style="color:var(--inferred)">INTERPRETATION <em>inferred · not checkable</em></h4>
+       <p>${c.interp}</p><div class="warn">Not independently verifiable.</div></div>
+     <div class="sec"><h4>VERIFIER</h4><div class="ver">${
+       c.verifier.map(([t,u])=>`<div class="${u?'un':''}">${u?'':tick()}${t}</div>`).join('')}</div></div>
+     <div class="sec"><h4>DRAFT MEMO <em>editable</em></h4><textarea>${c.memo}</textarea></div>
+     <div class="sec" style="border-bottom:0"><h4>CONCLUSION</h4><div class="concl">${
+       ['appropriate-recurring','appropriate-adjustment','appropriate-other','requires-procedures']
+       .map(o=>`<label><input type="radio" name="cc" value="${o}"> ${o}</label>`).join('')}</div>
+       <div class="acts"><button class="btn q">Copy</button>
+         <button class="btn rec" id="rec">${tick()}Record conclusion</button></div></div>`;
+    m.querySelector('#rec').onclick=()=>{
+      const pick=m.querySelector('input[name="cc"]:checked');
+      if(!pick){m.querySelector('input[name="cc"]').focus();return;}
+      ROWS.forEach(r=>(r.kids||[]).forEach(kd=>{if(kd.id===state.sel)kd.st='concluded';}));
+      render();};
+    m.querySelectorAll('.cite').forEach(b=>{
+      const open=(e)=>{const d=CITE[+b.dataset.c],p=el('pop');
+        p.innerHTML=`<b>${d.h}</b>${d.b.replace(/\n/g,'<br>')}`;p.dataset.open=1;
+        const r=b.getBoundingClientRect();
+        p.style.left=Math.min(r.left,window.innerWidth-360)+'px';p.style.top=(r.bottom+6)+'px';
+        e.stopPropagation();};
+      b.onclick=open;b.onkeydown=(e)=>{if(e.key==='Enter')open(e);};});
+  }
+  m.querySelector('#mx').onclick=()=>{state.sel=null;render();};
+  m.querySelector('#mgrip').onmousedown=(e)=>{
+    e.preventDefault();
+    const x0=e.clientX,w0=state.memoW;
+    const mv=(ev)=>{state.memoW=Math.min(760,Math.max(380,w0-(ev.clientX-x0)));m.style.width=state.memoW+'px';};
+    const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);};
+}
+document.addEventListener('click',()=>{el('pop').dataset.open=0;});
+
+/* ---------------- matrix overlay ---------------- */
+function openMatrix(){state.mx=1;renderMatrix();}
+function renderMatrix(){
+  const sc=el('scrim');sc.dataset.open=state.mx?1:0;
+  if(!state.mx){sc.innerHTML='';return;}
+  const P=buildPairs(),N=ACCTS.length,CELL=26;
+  const counts={NEW:0,VANISHED:0,SHIFTED:0,STABLE:0};
+  Object.values(P).forEach(v=>counts[v.st]++);
+  const maxc=Math.max(...Object.values(P).map(v=>Math.max(v.p1,v.p2)));
+  const cells=[];
+  cells.push(`<span></span>`);
+  for(let j=0;j<N-1;j++)cells.push(`<span class="cl">${ACCTS[j][0]}</span>`);
+  for(let i=1;i<N;i++){
+    cells.push(`<span class="rl">${ACCTS[i][0]}</span>`);
+    for(let j=0;j<N-1;j++){
+      if(j>=i){cells.push(`<span></span>`);continue;}
+      const key=[ACCTS[j][0],ACCTS[i][0]].sort().join('|'),d=P[key];
+      if(!d){cells.push(`<span class="cell" data-k=""></span>`);continue;}
+      let cls=d.st,style='';
+      if(state.gmode!=='diff'){
+        const c=state.gmode==='p1'?d.p1:d.p2;
+        cls='';style=c?`background:rgba(22,24,29,${(.12+.62*c/maxc).toFixed(3)})`:'';
+        if(c&&c<=2)style='background:rgba(194,65,12,.75)';           // rare within period
+      } else if(d.st==='STABLE'){
+        cls='';style=`background:rgba(22,24,29,${(.06+.26*Math.min(d.p2,maxc)/maxc).toFixed(3)})`;
+      }
+      cells.push(`<span class="cell ${cls}" style="${style}" data-k="${key}" tabindex="0" role="button"></span>`);
+    }
+  }
+  const legend=state.gmode==='diff'
+    ? [['NEW','background:#C2410C',counts.NEW],['SHIFTED','background:rgba(194,65,12,.45)',counts.SHIFTED],
+       ['VANISHED','background:repeating-linear-gradient(45deg,rgba(138,144,153,.5) 0 2px,transparent 2px 4px)',counts.VANISHED],
+       ['STABLE','background:rgba(22,24,29,.2)',counts.STABLE]]
+    : [['common','background:rgba(22,24,29,.6)',''],['rare','background:rgba(194,65,12,.75)',''],['absent','background:transparent',' ']];
+  sc.innerHTML=`<div class="ov" role="dialog" aria-label="Account pair diff">
+    <header><h2>Account pairs</h2>
+      <span class="seg">${['diff','p1','p2'].map(o=>`<button data-g="${o}" aria-pressed="${state.gmode===o}">${o}</button>`).join('')}</span>
+      <span class="hint">lower triangle · pairs are unordered</span>
+      <span style="margin-left:auto"></span>
+      <button class="btn q" id="ovx">Close</button></header>
+    <div class="body">
+      <div class="mx" style="grid-template-columns:44px repeat(${N-1},${CELL}px);grid-auto-rows:${CELL}px">${cells.join('')}</div>
+      <div class="side">
+        <div><div class="lab" style="margin-bottom:9px">READOUT</div>
+          <div class="rd" id="rd"><span class="hint">Hover a cell.</span></div></div>
+        <div><div class="lab" style="margin-bottom:9px">${state.gmode==='diff'?'STATUS':'FREQUENCY'}</div>
+          <div class="key">${legend.map(([n,st,ct])=>`<div><i style="${st}"></i>${n}${ct!==''?` <span class="mono" style="margin-left:auto;color:rgba(22,24,29,.45)">${ct}</span>`:''}</div>`).join('')}</div></div>
+        <div class="hint" style="margin-top:auto">${ACCTS.length} of 34 accounts by volume. Click a cell to filter the table to that pair.</div>
+      </div></div></div>`;
+  sc.querySelector('#ovx').onclick=()=>{state.mx=0;renderMatrix();};
+  sc.onclick=(e)=>{if(e.target===sc){state.mx=0;renderMatrix();}};
+  sc.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{state.gmode=b.dataset.g;renderMatrix();});
+  const nameOf=(c)=>(ACCTS.find(a=>a[0]===c)||[c,''])[1];
+  sc.querySelectorAll('.cell').forEach(c=>{
+    const key=c.dataset.k;
+    c.onmouseenter=()=>{
+      const rd=sc.querySelector('#rd');
+      if(!key){rd.innerHTML=`<span class="hint">No pairing between these accounts.</span>`;return;}
+      const d=P[key],[a,b]=key.split('|');
+      rd.innerHTML=`<span class="p">${a} ↔ ${b}</span>
+        <span class="nm">${nameOf(a)} ↔ ${nameOf(b)}</span>
+        <div class="kv" style="margin-top:8px">
+          <dt>status</dt><dd${d.st==='NEW'?' style="color:var(--signal)"':''}>${d.st}</dd>
+          <dt>p1Count</dt><dd>${d.p1}</dd><dt>p2Count</dt><dd>${d.p2}</dd>
+          <dt>delta</dt><dd>${d.p2-d.p1>0?'+':''}${d.p2-d.p1}</dd></div>`;};
+    if(key)c.onclick=()=>{state.edge=key;state.mx=0;state.filter='all';render();};
+  });
+}
+
+/* ---------------- columns panel ---------------- */
+function renderCols(){
+  const c=el('cols');c.dataset.open=state.cols?1:0;
+  if(!state.cols){c.innerHTML='';return;}
+  c.innerHTML=`<h4>COLUMNS</h4>${ORDER.map(id=>
+    `<label><input type="checkbox" data-col="${id}" ${show(id)?'checked':''}> ${COLS[id].lab}</label>`).join('')}
+    <hr><h4>DENSITY</h4><div class="dens">${[['compact',30],['standard',36],['comfortable',44]]
+      .map(([l,v])=>`<button data-d="${v}" aria-pressed="${state.density===v}">${l}</button>`).join('')}</div>
+    <hr><h4>SAVED VIEWS</h4><div class="dens">
+      <button data-v="triage">Triage</button><button data-v="detail">Detail</button></div>`;
+  c.querySelectorAll('[data-col]').forEach(b=>b.onchange=()=>{
+    const id=b.dataset.col;state.hidden.has(id)?state.hidden.delete(id):state.hidden.add(id);render();});
+  c.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{state.density=+b.dataset.d;render();});
+  c.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{
+    state.hidden=b.dataset.v==='triage'
+      ? new Set(['recurrence','composite','period','gap','lines','case'])
+      : new Set(['gap','period']);
+    render();});
+}
+
+/* ---------------- render ---------------- */
+function render(){
+  document.documentElement.style.setProperty('--row',state.density+'px');
+  renderStatus();
+  if(state.pop==='none'){
+    ['profile','cols'].forEach(i=>el(i).dataset.open=0);
+    el('controls').innerHTML='';
+    el('grid').innerHTML=`<div class="empty"><span class="k lab">NO POPULATION</span>
+      <span class="h">Create a business and ingest a population to begin.</span>
+      <span class="s">expects  GL export per period  ·  trial balance</span>
+      <button class="btn" style="margin-top:8px">Ingest population</button></div>`;
+    el('memo').dataset.open=0;el('memo').innerHTML='';return;
+  }
+  renderProfile();renderControls();renderGrid();renderMemo();renderCols();
+  const blocked=state.pop==='bad',mid=document.querySelector('.middle');
+  mid.style.opacity=blocked?.4:1;mid.style.pointerEvents=blocked?'none':'auto';
+}
+document.querySelectorAll('.harness [data-state]').forEach(b=>b.onclick=()=>{
+  state.pop=b.dataset.state;state.sel=null;state.override=null;state.edge=null;
+  document.querySelectorAll('.harness [data-state]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  render();});
+document.addEventListener('keydown',(e)=>{
+  if(e.target.matches('input,textarea'))return;
+  if(e.key==='g'){state.mx=state.mx?0:1;renderMatrix();}
+  if(e.key==='Escape'){if(state.mx){state.mx=0;renderMatrix();}else if(state.sel){state.sel=null;render();}}
+  if(e.key==='m'&&state.sel){state.sel=null;render();}});
+render();
+</script>

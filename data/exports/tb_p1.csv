@@ -1,0 +1,32 @@
+account,account_number,account_name,root_type,account_type,opening_debit,opening_credit,period_debit,period_credit,closing_debit,closing_credit
+1110 - Cash - MTC,1110,Cash,Asset,Cash,0.0,0.0,0.0,2876.89,0.0,2876.89
+1210 - Primary Checking - MTC,1210,Primary Checking,Asset,Bank,0.0,0.0,987001.87,1554431.58,0.0,567429.71
+1310 - Debtors - MTC,1310,Debtors,Asset,Receivable,0.0,0.0,1357013.63,991657.51,365356.12,0.0
+1660 - Prepaid Expenses - MTC,1660,Prepaid Expenses,Asset,,0.0,0.0,0.0,8700.0,0.0,8700.0
+1780 - Accumulated Depreciation - MTC,1780,Accumulated Depreciation,Asset,Accumulated Depreciation,0.0,0.0,0.0,20500.02,0.0,20500.02
+2110 - Creditors - MTC,2110,Creditors,Liability,Payable,0.0,0.0,1294306.87,1710729.63,0.0,416422.76
+2120 - Payroll Payable - MTC,2120,Payroll Payable,Liability,,0.0,0.0,220754.27,266921.87,0.0,46167.6
+2150 - Accrued Expenses - MTC,2150,Accrued Expenses,Liability,,0.0,0.0,28884.56,108504.85,0.0,79620.29
+2320 - Tax Withholding Payable - MTC,2320,Tax Withholding Payable,Liability,,0.0,0.0,39370.44,77049.6,0.0,37679.16
+4110 - Sales - MTC,4110,Sales,Income,,0.0,0.0,862.97,345702.47,0.0,344839.5
+4120 - Service - MTC,4120,Service,Income,,0.0,0.0,2865.83,862174.34,0.0,859308.51
+4130 - Freight Income - MTC,4130,Freight Income,Income,,0.0,0.0,926.84,81464.06,0.0,80537.22
+5111 - Cost of Goods Sold - MTC,5111,Cost of Goods Sold,Expense,Cost of Goods Sold,0.0,0.0,634603.86,0.0,634603.86,0.0
+5203 - Depreciation - MTC,5203,Depreciation,Expense,Depreciation,0.0,0.0,20500.02,0.0,20500.02,0.0
+5204 - Entertainment Expenses - MTC,5204,Entertainment Expenses,Expense,,0.0,0.0,25179.62,0.0,25179.62,0.0
+5205 - Freight and Forwarding Charges - MTC,5205,Freight and Forwarding Charges,Expense,Chargeable,0.0,0.0,204960.17,0.0,204960.17,0.0
+5207 - Marketing Expenses - MTC,5207,Marketing Expenses,Expense,Chargeable,0.0,0.0,103526.3,4615.77,98910.53,0.0
+5208 - Office Maintenance Expenses - MTC,5208,Office Maintenance Expenses,Expense,,0.0,0.0,134992.92,4013.17,130979.75,0.0
+5209 - Office Rent - MTC,5209,Office Rent,Expense,,0.0,0.0,60559.25,48056.85,12502.4,0.0
+5210 - Postal Expenses - MTC,5210,Postal Expenses,Expense,,0.0,0.0,20894.41,0.0,20894.41,0.0
+5211 - Print and Stationery - MTC,5211,Print and Stationery,Expense,,0.0,0.0,20315.74,0.0,20315.74,0.0
+5213 - Salary - MTC,5213,Salary,Expense,,0.0,0.0,397476.32,28884.56,368591.76,0.0
+5215 - Telephone Expenses - MTC,5215,Telephone Expenses,Expense,,0.0,0.0,22513.76,5415.01,17098.75,0.0
+5216 - Travel Expenses - MTC,5216,Travel Expenses,Expense,,0.0,0.0,9157.05,3387.74,5769.31,0.0
+5217 - Utility Expenses - MTC,5217,Utility Expenses,Expense,,0.0,0.0,211664.17,18049.52,193614.65,0.0
+5223 - Miscellaneous Expenses - MTC,5223,Miscellaneous Expenses,Expense,Chargeable,0.0,0.0,6890.06,3375.67,3514.39,0.0
+5226 - Contractor Services - MTC,5226,Contractor Services,Expense,,0.0,0.0,135978.01,0.0,135978.01,0.0
+5228 - Insurance Expense - MTC,5228,Insurance Expense,Expense,,0.0,0.0,72520.49,0.0,72520.49,0.0
+5229 - Security Expenses - MTC,5229,Security Expenses,Expense,,0.0,0.0,69924.49,0.0,69924.49,0.0
+5230 - IT and Software Expenses - MTC,5230,IT and Software Expenses,Expense,,0.0,0.0,130539.95,0.0,130539.95,0.0
+ST 6% - MTC,,ST 6%,Liability,Tax,0.0,0.0,0.0,67672.76,0.0,67672.76

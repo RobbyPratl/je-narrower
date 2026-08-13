@@ -1,0 +1,6 @@
+run = "pnpm start"
+
+[deployment]
+build = "pnpm install --frozen-lockfile && pnpm build"
+run = "pnpm start"
+deploymentTarget = "cloudrun"

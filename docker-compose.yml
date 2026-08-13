@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: je
+      POSTGRES_PASSWORD: je
+      POSTGRES_DB: je_narrower
+    ports:
+      - '5432:5432'
+    volumes:
+      - je_pg:/var/lib/postgresql/data
+
+volumes:
+  je_pg:
