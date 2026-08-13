@@ -4,7 +4,7 @@ import type { PopulationContext } from '../dataset.js';
 import { withTransaction } from '../db/client.js';
 import { runDiff, runProjection } from '../graph/run.js';
 import { runGrouping } from '../group/build.js';
-import { listFlaggedEntries, investigateEntry, buildPopulationStamp } from '../investigate/entry.js';
+import { listFlaggedEntries, investigateEntry, buildPopulationStamp, type InvestigationOptions } from '../investigate/entry.js';
 import { completeJob, createJob, failJob, updateJobProgress, updateJobStage } from '../jobs.js';
 import { countFlagged, runScoring } from '../scoring/run.js';
 import { config } from '../config.js';
@@ -16,6 +16,7 @@ const STAGE_ORDER: RunFrom[] = ['project', 'score', 'investigate', 'group'];
 export interface RunOptions {
   from: RunFrom;
   investigateLimit?: number | null;
+  investigation?: InvestigationOptions;
 }
 
 function stagesFrom(from: RunFrom): RunFrom[] {
@@ -76,7 +77,7 @@ export async function executePipelineRun(
       for (let i = 0; i < entryIds.length; i++) {
         const entryId = entryIds[i]!;
         await updateJobProgress(pool, context, jobId, { done: i, total: entryIds.length, current: entryId });
-        const caseFile = await investigateEntry(pool, context, entryId, population);
+        const caseFile = await investigateEntry(pool, context, entryId, population, opts.investigation);
         if (caseFile.verifier.status === 'passed') tally.passed++;
         else if (caseFile.verifier.status === 'retried') tally.retried++;
         else tally.escalated++;

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeConsistency, deviationReasons } from '../src/group/consistency.js';
 import { splitDeviations } from '../src/group/deviations.js';
-import { buildRecurrence } from '../src/group/recurrence.js';
+import { buildRecurrence, recurrenceLabel } from '../src/group/recurrence.js';
 import type { FlaggedEntry } from '../src/group/types.js';
 
 function entry(overrides: Partial<FlaggedEntry> & { entryId: string }): FlaggedEntry {
@@ -53,5 +53,15 @@ describe('group consistency', () => {
     ]);
     expect(recurrence.byMonth['2025-01']).toBe(2);
     expect(recurrence.byMonth['2025-02']).toBe(1);
+  });
+
+  it('counts inactive calendar months as gaps', () => {
+    const recurrence = buildRecurrence([
+      entry({ entryId: 'E1', effectiveDate: '2025-01-15' }),
+      entry({ entryId: 'E2', effectiveDate: '2025-03-15' }),
+    ]);
+    expect(recurrence.months).toEqual(['2025-01', '2025-02', '2025-03']);
+    expect(recurrence.marks).toEqual([1, 0, 1]);
+    expect(recurrenceLabel(recurrence)).toBe('observed in multiple months');
   });
 });

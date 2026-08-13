@@ -8,6 +8,10 @@ import { getCurrentPopulation, requireCurrentPopulation } from './dataset.js';
 import { runIngest } from './ingest/index.js';
 import { createJob, getJob } from './jobs.js';
 import { executePipelineRun, type RunFrom } from './pipeline/run.js';
+import { buildPopulationStamp, investigateEntry, listFlaggedEntries } from './investigate/entry.js';
+import { mockFindings } from './investigate/provider.js';
+import { runGrouping } from './group/build.js';
+import { recordGroupDecision } from './decisions/record.js';
 
 const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const pool = createPool();
@@ -58,24 +62,78 @@ async function seedDemo() {
     });
     context = await requireCurrentPopulation(pool, businessId);
   }
-  if (context.pipeline.grouped) {
-    console.log(`demo population already ready for ${businessId}`);
-    return;
+  const limit = Number(process.env.DEMO_INVESTIGATE_LIMIT ?? 25);
+  const demoInvestigation = { generate: mockFindings, model: 'demo:seeded' };
+
+  if (!context.pipeline.grouped) {
+    const from: RunFrom = !context.pipeline.projected
+      ? 'project'
+      : !context.pipeline.scored
+        ? 'score'
+        : !context.pipeline.investigated
+          ? 'investigate'
+          : 'group';
+    const jobId = await createJob(pool, context, 'demo-seed', 4, from);
+    await executePipelineRun(pool, context, jobId, {
+      from,
+      investigateLimit: limit,
+      investigation: demoInvestigation,
+    });
+    const job = await getJob(pool, context, jobId);
+    if (job?.status !== 'done') throw new Error(job?.error ?? 'demo seed failed');
+    context = await requireCurrentPopulation(pool, businessId);
   }
 
-  const from: RunFrom = !context.pipeline.projected
-    ? 'project'
-    : !context.pipeline.scored
-      ? 'score'
-      : !context.pipeline.investigated
-        ? 'investigate'
-        : 'group';
-  const jobId = await createJob(pool, context, 'demo-seed', 4, from);
-  const limit = Number(process.env.DEMO_INVESTIGATE_LIMIT ?? 25);
-  await executePipelineRun(pool, context, jobId, { from, investigateLimit: limit });
-  const job = await getJob(pool, context, jobId);
-  if (job?.status !== 'done') throw new Error(job?.error ?? 'demo seed failed');
+  const { rows: groupRows } = await pool.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM review_groups WHERE dataset_id = $1 AND kind = 'group'`,
+    [context.datasetId],
+  );
+  if (Number(groupRows[0]?.count ?? 0) === 0) {
+    await runGrouping(pool, context);
+  }
+
+  const population = await buildPopulationStamp(pool, context);
+  const missingCases = await listFlaggedEntries(pool, context, limit);
+  for (const entryId of missingCases) {
+    await investigateEntry(pool, context, entryId, population, demoInvestigation);
+  }
+
+  await seedReviewHistory(context);
   console.log(`demo population ready for ${businessId}`);
+}
+
+async function seedReviewHistory(context: Awaited<ReturnType<typeof requireCurrentPopulation>>) {
+  const { rows: decisionRows } = await pool.query<{ count: string }>(
+    'SELECT COUNT(*)::text AS count FROM decisions WHERE dataset_id = $1',
+    [context.datasetId],
+  );
+  if (Number(decisionRows[0]?.count ?? 0) > 0) return;
+
+  const { rows } = await pool.query<{ group_id: string; entry_ids: string[] }>(
+    `SELECT rg.group_id, array_agg(gm.entry_id ORDER BY gm.entry_id) AS entry_ids
+     FROM review_groups rg
+     JOIN group_members gm ON gm.dataset_id = rg.dataset_id AND gm.group_id = rg.group_id
+     WHERE rg.dataset_id = $1 AND rg.kind = 'group'
+     GROUP BY rg.dataset_id, rg.group_id
+     ORDER BY COUNT(gm.entry_id) DESC
+     LIMIT 1`,
+    [context.datasetId],
+  );
+  const example = rows[0];
+  if (!example) return;
+
+  await recordGroupDecision(pool, context, example.group_id, {
+    conclusion: 'appropriate-recurring',
+    basis: 'Demo conclusion: recurring account combination, common preparer, and consistent entry structure reviewed.',
+    recordedBy: 'demo.reviewer',
+    entryIds: example.entry_ids,
+  });
+  await recordGroupDecision(pool, context, example.group_id, {
+    conclusion: 'requires-procedures',
+    basis: 'Demo revision: retain the group for supporting-document inspection before final disposition.',
+    recordedBy: 'demo.reviewer',
+    entryIds: example.entry_ids,
+  });
 }
 
 main()

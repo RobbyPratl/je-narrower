@@ -1,5 +1,6 @@
 import type pg from 'pg';
 import { describe, expect, it, vi } from 'vitest';
+import { config } from '../src/config.js';
 import type { PopulationContext } from '../src/dataset.js';
 import { buildDeterministicFindings, listFlaggedEntries } from '../src/investigate/entry.js';
 import { buildAgentPrompt } from '../src/investigate/provider.js';
@@ -42,7 +43,7 @@ describe('investigation cost controls', () => {
     await listFlaggedEntries(pool, context, 25);
     expect(query.mock.calls[0]![0]).toContain('NOT EXISTS');
     expect(query.mock.calls[0]![0]).toContain('LIMIT $3');
-    expect(query.mock.calls[0]![1]).toEqual([context.datasetId, 0.35, 25]);
+    expect(query.mock.calls[0]![1]).toEqual([context.datasetId, config.scoring.flagThreshold, 25]);
 
     query.mockClear();
     await listFlaggedEntries(pool, context, null, true);

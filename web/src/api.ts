@@ -226,6 +226,7 @@ export interface EntryDetail {
     totalAmount: number;
   };
   lines: EntryLine[];
+  scores: Array<{ rule: string; score: number; inputs: Record<string, unknown> }>;
   composite: number;
   isDeviation: boolean;
 }
@@ -259,6 +260,9 @@ export async function fetchCase(entryId: string): Promise<CaseFile | null> {
     throw error;
   }
 }
+
+export const reinvestigateEntry = (entryId: string) =>
+  send<CaseFile>('POST', `/cases/${entryId}/reinvestigate`, { force: true });
 
 export const updateMembers = (groupId: string, change: { add?: string[]; remove?: string[] }) =>
   send<{ group: GroupSheet; superseded: string | null }>('PATCH', `/queue/${groupId}/members`, change);

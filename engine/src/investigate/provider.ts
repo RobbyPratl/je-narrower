@@ -42,7 +42,7 @@ export async function generateFindings(input: GenerateInput): Promise<GenerateOu
   throw new Error(`unknown agent provider: ${provider}`);
 }
 
-function mockFindings(input: GenerateInput): GenerateOutput {
+export function mockFindings(input: GenerateInput): GenerateOutput {
   const findings: GenerateOutput['findings'] = [];
   for (const tr of input.toolResults) {
     if (tr.tool === 'get_entry_lines') {

@@ -23,6 +23,7 @@ import { MemberTable } from './MemberTable';
 import { GroupPicker, Reason } from './Dialogs';
 import { basisDetail, consistencyScore } from './consistency';
 import { EntryDetail } from './EntryDetail';
+import { HelpTip, patternConsistencyHelp, RuleTerm } from './Terminology';
 
 const conclusions = Object.keys(conclusionLabels).filter(
   (c) => c !== 'set-aside',
@@ -152,10 +153,20 @@ export function Workbench({
         </h2>
         <div className="wbmeta">
           <span className="score">{liveScore.toFixed(2)}</span>
-          <span>consistency</span>
+          <span>pattern consistency</span>
+          <HelpTip label="Pattern consistency">{patternConsistencyHelp}</HelpTip>
           <span className="dot" />
           <span>{item.recurrence.label}</span>
-          {item.rulesFired.length > 0 && <Separated items={item.rulesFired} className="rulist" />}
+          {item.rulesFired.length > 0 && (
+            <span className="rulist">
+              {item.rulesFired.map((rule, i) => (
+                <span key={rule}>
+                  {i > 0 && <i className="seprule" />}
+                  <RuleTerm rule={rule} />
+                </span>
+              ))}
+            </span>
+          )}
         </div>
       </div>
 

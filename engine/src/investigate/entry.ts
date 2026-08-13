@@ -8,7 +8,7 @@ import type { CheckResult } from '../types.js';
 import type { CaseFile } from './case-file.js';
 import type { Citation } from './case-file.js';
 import { buildPlan, ruleGroup, ruleWeight } from './plan.js';
-import { generateFindings } from './provider.js';
+import { generateFindings, type GenerateInput, type GenerateOutput } from './provider.js';
 import { runTool, type ToolName } from './tools.js';
 import { verifyAgainstDb, verifyCaseFile, refKey as citationKey } from './verifier.js';
 
@@ -113,6 +113,7 @@ export async function investigateEntry(
   context: PopulationContext,
   entryId: string,
   population: PopulationStamp,
+  options: InvestigationOptions = {},
 ): Promise<CaseFile> {
   const { rows: entryRows } = await pool.query<{
     entry_id: string;
@@ -194,7 +195,8 @@ export async function investigateEntry(
   let verifierTrace: unknown = null;
 
   try {
-    let output = await generateFindings({ entryId, toolResults, allowedCitations });
+    const generate = options.generate ?? generateFindings;
+    let output = await generate({ entryId, toolResults, allowedCitations });
     findings = output.findings;
 
     let caseFile = assembleCaseFile({
@@ -206,6 +208,7 @@ export async function investigateEntry(
       verifierStatus: 'passed',
       failures: [],
       checkedCitations: 0,
+      model: options.model,
     });
 
     let verify = verifyCaseFile(caseFile, retrievedRefs);
@@ -213,7 +216,7 @@ export async function investigateEntry(
     verify = mergeVerify(verify, dbVerify);
 
     if (!verify.ok && config.agent.verifierRetries > 0) {
-      output = await generateFindings({
+      output = await generate({
         entryId,
         toolResults,
         allowedCitations,
@@ -229,6 +232,7 @@ export async function investigateEntry(
         verifierStatus: 'retried',
         failures: [],
         checkedCitations: 0,
+        model: options.model,
       });
       verify = verifyCaseFile(caseFile, retrievedRefs);
       dbVerify = await verifyAgainstDb(pool, context, caseFile);
@@ -255,6 +259,7 @@ export async function investigateEntry(
       verifierStatus,
       failures,
       checkedCitations: verify.checkedCitations,
+      model: options.model,
     });
 
     await upsertCase(pool, context, entryId, caseFile, planSteps, verifierTrace);
@@ -269,11 +274,17 @@ export async function investigateEntry(
       verifierStatus: 'escalated',
       failures: [{ ref: 'agent', error: err instanceof Error ? err.message : String(err) }],
       checkedCitations: 0,
+      model: options.model,
     });
     verifierTrace = { error: err instanceof Error ? err.message : String(err) };
     await upsertCase(pool, context, entryId, caseFile, planSteps, verifierTrace);
     return caseFile;
   }
+}
+
+export interface InvestigationOptions {
+  generate?: (input: GenerateInput) => Promise<GenerateOutput> | GenerateOutput;
+  model?: string;
 }
 
 function citationAllowlist(entryId: string, refs: Set<string>): Citation[] {

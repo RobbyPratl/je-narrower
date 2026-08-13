@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { accountCode, fetchCase, fetchEntry, type Citation, type EntryRow } from './api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { accountCode, fetchCase, fetchEntry, reinvestigateEntry, type CaseFile, type Citation, type EntryRow } from './api';
+import { combinedScoreHelp, HelpTip, RuleTerm } from './Terminology';
 
 /**
  * Deviations and individuals are one entry, so the evidence is the entry itself
@@ -8,6 +9,7 @@ import { accountCode, fetchCase, fetchEntry, type Citation, type EntryRow } from
  * deterministic scores, then the source rows, then what the agent retrieved.
  */
 export function EntryDetail({ entryId, peers }: { entryId: string; peers: EntryRow[] }) {
+  const queryClient = useQueryClient();
   const { data: detail } = useQuery({
     queryKey: ['entry', entryId],
     queryFn: () => fetchEntry(entryId),
@@ -15,6 +17,10 @@ export function EntryDetail({ entryId, peers }: { entryId: string; peers: EntryR
   const { data: caseFile } = useQuery({
     queryKey: ['case', entryId],
     queryFn: () => fetchCase(entryId),
+  });
+  const llm = useMutation({
+    mutationFn: () => reinvestigateEntry(entryId),
+    onSuccess: (next) => queryClient.setQueryData(['case', entryId], next),
   });
 
   if (!detail) return null;
@@ -25,21 +31,23 @@ export function EntryDetail({ entryId, peers }: { entryId: string; peers: EntryR
     <>
       <section className="sec">
         <div className="sech">
-          <span className="lab">Flagged by</span>
+          <span className="lab">Selection criteria</span>
         </div>
         <dl className="kv">
-          {(caseFile?.engine.rules ?? []).map((rule) => (
+          {detail.scores.map((rule) => (
             <Fragment key={rule.rule}>
-              <dt>{rule.rule}</dt>
+              <dt><RuleTerm rule={rule.rule} /></dt>
               <dd>{rule.score.toFixed(2)}</dd>
             </Fragment>
           ))}
-          <dt className="strong">composite</dt>
+          <dt className="strong">
+            Combined selection score <HelpTip label="Combined selection score">{combinedScoreHelp}</HelpTip>
+          </dt>
           <dd>{detail.composite.toFixed(2)}</dd>
         </dl>
-        {caseFile?.engine.rules.map((rule) => (
+        {detail.scores.map((rule) => (
           <div className="ruleinputs" key={rule.rule}>
-            <span className="dim">{rule.rule}</span>
+            <span className="dim">{rule.rule.replaceAll('_', ' ')}</span>
             {Object.entries(rule.inputs)
               .filter(([, value]) => value !== null && value !== '')
               .map(([key, value]) => (
@@ -95,8 +103,8 @@ export function EntryDetail({ entryId, peers }: { entryId: string; peers: EntryR
         <>
           <section className="sec">
             <div className="sech">
-              <span className="lab">Agent findings</span>
-              <span className="dstat">{caseFile.model}</span>
+              <span className="lab">Investigation note</span>
+              <span className="dstat" title={caseFile.model}>{generationLabel(caseFile)}</span>
             </div>
             <div className="plan">
               {caseFile.agent.plan.map((step) => (
@@ -114,11 +122,20 @@ export function EntryDetail({ entryId, peers }: { entryId: string; peers: EntryR
                 ))}
               </div>
             ))}
+            {isDemoCase(caseFile) && (
+              <div className="llmtry">
+                <button className="btn sm" disabled={llm.isPending} onClick={() => llm.mutate()}>
+                  {llm.isPending ? 'Generating…' : 'Generate with configured LLM'}
+                </button>
+                <span>The saved demo note will be replaced.</span>
+              </div>
+            )}
+            {llm.error && <div className="warnline">{llm.error.message}</div>}
           </section>
 
           <section className="sec">
             <div className="sech">
-              <span className="lab">Verifier</span>
+              <span className="lab">Citation check</span>
             </div>
             <div className="ver">
               <div>
@@ -134,6 +151,16 @@ export function EntryDetail({ entryId, peers }: { entryId: string; peers: EntryR
       )}
     </>
   );
+}
+
+function isDemoCase(caseFile: CaseFile): boolean {
+  return caseFile.model.startsWith('demo:') || caseFile.model.startsWith('mock:');
+}
+
+function generationLabel(caseFile: CaseFile): string {
+  if (isDemoCase(caseFile)) return 'Demo data';
+  if (caseFile.model.startsWith('template:')) return 'Rule generated';
+  return caseFile.agent.findings.length > 0 ? 'LLM generated' : 'LLM attempt failed';
 }
 
 /** The account's amounts, with this entry marked. "Far out on the right" is a shape. */

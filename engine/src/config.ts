@@ -9,7 +9,7 @@ export const config = {
     shiftedTolerance: 0.5,
   },
   scoring: {
-    flagThreshold: 0.35,
+    flagThreshold: Number(process.env.FLAG_THRESHOLD ?? 0.25),
   },
   rules: {
     thresholdBoundariesCents: [100_000, 500_000, 1_000_000, 5_000_000],
