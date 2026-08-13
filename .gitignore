@@ -65,3 +65,6 @@ Thumbs.db
 
 # Vendored upstream repository; not part of JE Narrower or its deployment
 infra/frappe_docker/
+
+# Internal design and working documentation
+docs/
