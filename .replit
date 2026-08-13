@@ -1,3 +1,5 @@
+modules = ["nodejs-20"]
+
 run = "npm exec --yes --package=pnpm@9.15.9 -- pnpm start:replit"
 
 [deployment]
