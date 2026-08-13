@@ -12,6 +12,7 @@
     "serve": "pnpm --filter @je-narrower/engine serve",
     "web": "pnpm --filter @je-narrower/web dev",
     "test": "pnpm --filter @je-narrower/engine test && pnpm --filter @je-narrower/showcase test",
-    "start": "pnpm migrate && pnpm serve"
+    "start": "pnpm migrate && pnpm serve",
+    "start:replit": "pnpm migrate && pnpm seed:demo && pnpm serve"
   }
 }

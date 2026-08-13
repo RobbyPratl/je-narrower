@@ -32,3 +32,5 @@ pnpm start
 ```
 
 The single Fastify process serves the showcase at `/`, the original application at `/demo-app/`, the API at `/api/*`, and the health check at `/health`.
+
+Replit uses `pnpm start:replit`, which migrates the database and idempotently seeds the bundled Meridian demo population before starting the server.

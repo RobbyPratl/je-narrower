@@ -1,6 +1,6 @@
-run = "pnpm start"
+run = "pnpm start:replit"
 
 [deployment]
 build = "pnpm install --frozen-lockfile && pnpm build"
-run = "pnpm start"
+run = "pnpm start:replit"
 deploymentTarget = "cloudrun"
