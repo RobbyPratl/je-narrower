@@ -17,12 +17,13 @@ export const TOOL_SAMPLE_LIMIT = 15;
 
 export async function getEntryLines(pool: pg.Pool, context: PopulationContext, entryId: string): Promise<ToolResult> {
   const { rows: entry } = await pool.query(
-    `SELECT entry_id, period::text, effective_date::text, "user", source, line_count, total_amount::text
+    `SELECT entry_id, period::text, posted_at::text, effective_date::text, "user", source,
+            voucher_type, narration, line_count, total_amount::text
      FROM entries WHERE dataset_id = $1 AND entry_id = $2`,
     [context.datasetId, entryId],
   );
   const { rows: lines } = await pool.query(
-    `SELECT line_id, line_no, account, debit::text, credit::text
+    `SELECT line_id, line_no, account, debit::text, credit::text, party_type, party, cost_center, memo
      FROM lines WHERE dataset_id = $1 AND entry_id = $2 ORDER BY line_no
      LIMIT $3`,
     [context.datasetId, entryId, TOOL_SAMPLE_LIMIT],
@@ -51,7 +52,20 @@ export async function getPairHistory(
   const [a, b] = pairKey(accountA, accountB);
   const [{ rows: summary }, { rows }] = await Promise.all([
     pool.query(
-      `SELECT COUNT(*)::int AS occurrence_count,
+      `WITH matching_entries AS (
+         SELECT l.entry_id
+         FROM lines l
+         WHERE l.dataset_id = $1 AND l.account = ANY(ARRAY[$3, $4]::text[])
+         GROUP BY l.entry_id
+         HAVING (
+           BOOL_OR(l.account = $3 AND l.debit > 0)
+           AND BOOL_OR(l.account = $4 AND l.credit > 0)
+         ) OR (
+           BOOL_OR(l.account = $3 AND l.credit > 0)
+           AND BOOL_OR(l.account = $4 AND l.debit > 0)
+         )
+       )
+       SELECT COUNT(*)::int AS occurrence_count,
               COALESCE(SUM(e.total_amount), 0)::text AS total_amount,
               COALESCE(AVG(e.total_amount), 0)::text AS average_amount,
               COALESCE(MIN(e.total_amount), 0)::text AS minimum_amount,
@@ -59,27 +73,28 @@ export async function getPairHistory(
               MIN(e.effective_date)::text AS first_seen,
               MAX(e.effective_date)::text AS last_seen
        FROM entries e
-       WHERE e.dataset_id = $1 AND e.period = $2
-         AND EXISTS (
-           SELECT 1 FROM lines l1
-           JOIN lines l2 ON l2.dataset_id = l1.dataset_id AND l2.entry_id = l1.entry_id
-           WHERE l1.dataset_id = e.dataset_id AND l1.entry_id = e.entry_id
-             AND l1.account = $3 AND l2.account = $4
-             AND l1.debit > 0 AND l2.credit > 0
-         )`,
+       JOIN matching_entries m ON m.entry_id = e.entry_id
+       WHERE e.dataset_id = $1 AND e.period = $2`,
       [context.datasetId, period, a, b],
     ),
     pool.query(
-    `SELECT e.entry_id, e.effective_date::text, e.total_amount::text, e."user"
-     FROM entries e
-     WHERE e.dataset_id = $1 AND e.period = $2
-       AND EXISTS (
-         SELECT 1 FROM lines l1
-         JOIN lines l2 ON l2.dataset_id = l1.dataset_id AND l2.entry_id = l1.entry_id
-         WHERE l1.dataset_id = e.dataset_id AND l1.entry_id = e.entry_id
-           AND l1.account = $3 AND l2.account = $4
-           AND l1.debit > 0 AND l2.credit > 0
+    `WITH matching_entries AS (
+       SELECT l.entry_id
+       FROM lines l
+       WHERE l.dataset_id = $1 AND l.account = ANY(ARRAY[$3, $4]::text[])
+       GROUP BY l.entry_id
+       HAVING (
+         BOOL_OR(l.account = $3 AND l.debit > 0)
+         AND BOOL_OR(l.account = $4 AND l.credit > 0)
+       ) OR (
+         BOOL_OR(l.account = $3 AND l.credit > 0)
+         AND BOOL_OR(l.account = $4 AND l.debit > 0)
        )
+     )
+     SELECT e.entry_id, e.effective_date::text, e.total_amount::text, e."user"
+     FROM entries e
+     JOIN matching_entries m ON m.entry_id = e.entry_id
+     WHERE e.dataset_id = $1 AND e.period = $2
      ORDER BY e.effective_date DESC, e.entry_id
      LIMIT $5`,
       [context.datasetId, period, a, b, TOOL_SAMPLE_LIMIT],
@@ -110,13 +125,19 @@ export async function getSimilarEntries(pool: pg.Pool, context: PopulationContex
   );
   const accts = accounts.map((a) => a.account);
   const { rows } = await pool.query(
-    `SELECT e.entry_id, e.period::text, e.effective_date::text, e.total_amount::text
+    `WITH candidate_accounts AS (
+       SELECT l.entry_id,
+              COUNT(DISTINCT l.account)::int AS account_count,
+              COUNT(DISTINCT l.account) FILTER (WHERE l.account = ANY($3::text[]))::int AS overlap_count
+       FROM lines l
+       WHERE l.dataset_id = $1
+       GROUP BY l.entry_id
+     )
+     SELECT e.entry_id, e.period::text, e.effective_date::text, e.total_amount::text
      FROM entries e
+     JOIN candidate_accounts c ON c.entry_id = e.entry_id
      WHERE e.dataset_id = $1 AND e.entry_id <> $2
-       AND (SELECT COUNT(DISTINCT l.account) FROM lines l
-            WHERE l.dataset_id = e.dataset_id AND l.entry_id = e.entry_id AND l.account = ANY($3::text[]))
-         = LEAST($4, (SELECT COUNT(DISTINCT account) FROM lines
-                      WHERE dataset_id = e.dataset_id AND entry_id = e.entry_id))
+       AND c.overlap_count = LEAST($4, c.account_count)
      ORDER BY e.effective_date DESC
      LIMIT $5`,
     [context.datasetId, entryId, accts, accts.length, sampleLimit],

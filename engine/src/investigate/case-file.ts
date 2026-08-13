@@ -59,6 +59,6 @@ export type Citation = z.infer<typeof CitationSchema>;
 export const AgentOutputSchema = z.object({
   findings: z.array(z.object({
     text: z.string(),
-    citations: z.array(CitationSchema).min(1),
-  })),
-});
+    citations: z.array(CitationSchema.strict()).min(1),
+  }).strict()).max(6),
+}).strict();

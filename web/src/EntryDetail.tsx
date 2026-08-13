@@ -122,12 +122,16 @@ export function EntryDetail({ entryId, peers }: { entryId: string; peers: EntryR
                 ))}
               </div>
             ))}
-            {isDemoCase(caseFile) && (
+            {(isDemoCase(caseFile) || isFailedLlmCase(caseFile)) && (
               <div className="llmtry">
                 <button className="btn sm" disabled={llm.isPending} onClick={() => llm.mutate()}>
-                  {llm.isPending ? 'Generating…' : 'Generate with configured LLM'}
+                  {llm.isPending
+                    ? 'Generating…'
+                    : isFailedLlmCase(caseFile)
+                      ? 'Retry configured LLM'
+                      : 'Generate with configured LLM'}
                 </button>
-                <span>The saved demo note will be replaced.</span>
+                <span>{isDemoCase(caseFile) ? 'The saved demo note will be replaced.' : 'The failed attempt will be replaced.'}</span>
               </div>
             )}
             {llm.error && <div className="warnline">{llm.error.message}</div>}
@@ -155,6 +159,12 @@ export function EntryDetail({ entryId, peers }: { entryId: string; peers: EntryR
 
 function isDemoCase(caseFile: CaseFile): boolean {
   return caseFile.model.startsWith('demo:') || caseFile.model.startsWith('mock:');
+}
+
+function isFailedLlmCase(caseFile: CaseFile): boolean {
+  return !isDemoCase(caseFile)
+    && !caseFile.model.startsWith('template:')
+    && caseFile.agent.findings.length === 0;
 }
 
 function generationLabel(caseFile: CaseFile): string {

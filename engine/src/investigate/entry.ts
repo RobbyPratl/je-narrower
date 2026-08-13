@@ -196,7 +196,8 @@ export async function investigateEntry(
 
   try {
     const generate = options.generate ?? generateFindings;
-    let output = await generate({ entryId, toolResults, allowedCitations });
+    const criteria = engine.rules.map(({ rule, score, inputs }) => ({ rule, score, inputs }));
+    let output = await generate({ entryId, criteria, toolResults, allowedCitations });
     findings = output.findings;
 
     let caseFile = assembleCaseFile({
@@ -218,6 +219,7 @@ export async function investigateEntry(
     if (!verify.ok && config.agent.verifierRetries > 0) {
       output = await generate({
         entryId,
+        criteria,
         toolResults,
         allowedCitations,
         verifierFailures: verify.failures.map((f) => `${f.ref}: ${f.error}`),
@@ -295,8 +297,9 @@ function citationAllowlist(entryId: string, refs: Set<string>): Citation[] {
     if (separator < 0) continue;
     const kind = value.slice(0, separator);
     const ref = value.slice(separator + 1);
-    if (kind !== 'line') continue;
-    others.push({ kind: 'line', ref });
+    if (kind !== 'entry' && kind !== 'line') continue;
+    if (kind === 'entry' && ref === entryId) continue;
+    others.push({ kind, ref });
     if (others.length === 19) break;
   }
   return [target, ...others];
